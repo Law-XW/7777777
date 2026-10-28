@@ -1,4 +1,4 @@
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/YourName/YourRepo/main/Source.lua"))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Law-XW/7777777/refs/heads/main/Source.lua"))()
 
 local Window = Library:CreateWindow({
 	Title = "Zero",
