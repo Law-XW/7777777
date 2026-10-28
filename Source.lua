@@ -57,7 +57,7 @@ end
 
 local Zero = {}
 Zero.__index = Zero
-Zero.Version = "1.7.0"
+Zero.Version = "1.7.1"
 Zero.Font = Enum.Font.Arial
 Zero.FontMedium = Enum.Font.Arial
 Zero.FontBold = Enum.Font.ArialBold
@@ -2579,6 +2579,18 @@ function Window:SetWatermark(text)
 	self.Watermark.Update()
 end
 
+function Window:SetFooter(text)
+	if self.FooterLabel then
+		self.FooterLabel.Text = tostring(text or "")
+	end
+end
+
+function Window:SetFooterVisible(state)
+	if self.Footer then
+		self.Footer.Visible = state
+	end
+end
+
 function Window:SetWatermarkVisible(state)
 	if self.Watermark then
 		self.Watermark.Frame.Visible = state
@@ -2997,12 +3009,46 @@ function Zero:CreateWindow(opts)
 	})
 
 	window.Pages = create("Frame", {
-		Size = UDim2.new(1, -130, 1, 0),
+		Size = UDim2.new(1, -130, 1, -26),
 		Position = UDim2.fromOffset(130, 0),
 		BackgroundTransparency = 1,
 		ClipsDescendants = true,
 		Parent = body,
 	})
+
+	local footer = create("Frame", {
+		Name = "Footer",
+		Size = UDim2.new(1, -130, 0, 26),
+		Position = UDim2.new(0, 130, 1, -26),
+		BackgroundColor3 = T.Section,
+		BackgroundTransparency = 0.35,
+		BorderSizePixel = 0,
+		Parent = body,
+	}, { padding(12, 0, 12, 0) })
+	create("Frame", {
+		Size = UDim2.new(1, 0, 0, 1),
+		BackgroundColor3 = T.Stroke,
+		BorderSizePixel = 0,
+		Parent = footer,
+	})
+	window.FooterLabel = label({
+		Text = opts.Footer or "Zero.gg",
+		TextSize = 11,
+		TextColor3 = T.SubText,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Size = UDim2.new(0.6, 0, 1, 0),
+		Parent = footer,
+	})
+	label({
+		Text = "v" .. tostring(opts.Version or Zero.Version),
+		TextSize = 11,
+		TextColor3 = T.SubText,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Size = UDim2.new(0.4, 0, 1, 0),
+		Position = UDim2.fromScale(0.6, 0),
+		Parent = footer,
+	})
+	window.Footer = footer
 
 	window.Notes = create("Frame", {
 		Size = UDim2.new(0, 240, 1, -24),
