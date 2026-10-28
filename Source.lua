@@ -5,6 +5,8 @@ local RunService = game:GetService("RunService")
 local GuiService = game:GetService("GuiService")
 local HttpService = game:GetService("HttpService")
 local Stats = game:GetService("Stats")
+local TeleportService = game:GetService("TeleportService")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 local Lucide
 pcall(function()
@@ -55,7 +57,7 @@ end
 
 local Zero = {}
 Zero.__index = Zero
-Zero.Version = "1.6.0"
+Zero.Version = "1.7.0"
 Zero.Font = Enum.Font.Arial
 Zero.FontMedium = Enum.Font.Arial
 Zero.FontBold = Enum.Font.ArialBold
@@ -389,6 +391,10 @@ local function buildElements(window, container, tab, popup)
 			end)
 		end)
 		return obj
+	end
+
+	function api:AddRow(height)
+		return newRow(height)
 	end
 
 	function api:AddLabel(text)
@@ -1686,6 +1692,247 @@ function Window:AddSettingsManager(opts)
 	return tab
 end
 
+local function rejoinServer()
+	local player = Players.LocalPlayer
+	if #Players:GetPlayers() <= 1 then
+		TeleportService:Teleport(game.PlaceId, player)
+	else
+		TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
+	end
+end
+
+local function findServer()
+	local cursor = nil
+	for _ = 1, 5 do
+		local url = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&excludeFullGames=true&limit=100"
+		if cursor then
+			url = url .. "&cursor=" .. cursor
+		end
+		local ok, data = pcall(function()
+			return HttpService:JSONDecode(game:HttpGet(url))
+		end)
+		if not ok or type(data) ~= "table" or type(data.data) ~= "table" then
+			return nil
+		end
+		local pool = {}
+		for _, server in ipairs(data.data) do
+			if server.id ~= game.JobId and server.playing and server.maxPlayers and server.playing < server.maxPlayers then
+				table.insert(pool, server.id)
+			end
+		end
+		if #pool > 0 then
+			return pool[math.random(#pool)]
+		end
+		cursor = data.nextPageCursor
+		if not cursor then
+			return nil
+		end
+	end
+	return nil
+end
+
+function Window:AddHomeManager(opts)
+	opts = opts or {}
+	local window = self
+	local localPlayer = Players.LocalPlayer
+	local anonymous = opts.Anonymous
+	if anonymous == nil then
+		anonymous = window.Anonymous
+	end
+
+	local userName = opts.User or opts.Username
+	if not userName then
+		local env = type(getgenv) == "function" and getgenv() or _G
+		userName = env.ZeroUser or env.ZeroGGUser
+	end
+	userName = anonymous and "XXX" or tostring(userName or localPlayer.Name)
+
+	local tab = self:AddTab(opts.Name or "Home", opts.Icon or "home")
+
+	local profile = tab:AddSection("Profile", "Left", "user", "account")
+	local card = profile:AddRow(64)
+	local avatar = create("ImageLabel", {
+		Size = UDim2.fromOffset(56, 56),
+		Position = UDim2.fromOffset(1, 4),
+		BackgroundColor3 = T.Element,
+		BorderSizePixel = 0,
+		Image = anonymous and "" or ("rbxthumb://type=AvatarHeadShot&id=" .. localPlayer.UserId .. "&w=150&h=150"),
+		Parent = card,
+	}, { corner(28), stroke(T.Accent, 1) })
+	getStroke(avatar).Transparency = 0.5
+	if anonymous then
+		local mark = icon(avatar, "user", 24, T.SubText)
+		mark.AnchorPoint = Vector2.new(0.5, 0.5)
+		mark.Position = UDim2.fromScale(0.5, 0.5)
+	end
+	label({
+		Text = userName,
+		Font = Zero.FontBold,
+		TextSize = 14,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Size = UDim2.new(1, -72, 0, 18),
+		Position = UDim2.fromOffset(70, 8),
+		Parent = card,
+	})
+	label({
+		Text = "Zero.gg User",
+		TextSize = 11,
+		TextColor3 = T.Accent,
+		Size = UDim2.new(1, -72, 0, 14),
+		Position = UDim2.fromOffset(70, 27),
+		Parent = card,
+	})
+	label({
+		Text = anonymous and "@XXX" or ("@" .. localPlayer.Name),
+		TextSize = 10,
+		TextColor3 = T.SubText,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Size = UDim2.new(1, -72, 0, 14),
+		Position = UDim2.fromOffset(70, 42),
+		Parent = card,
+	})
+
+	local gameSection = tab:AddSection("Game", "Right", "gamepad-2", "session")
+	local gameCard = gameSection:AddRow(64)
+	create("ImageLabel", {
+		Size = UDim2.fromOffset(56, 56),
+		Position = UDim2.fromOffset(1, 4),
+		BackgroundColor3 = T.Element,
+		BorderSizePixel = 0,
+		Image = "rbxthumb://type=GameIcon&id=" .. game.GameId .. "&w=150&h=150",
+		Parent = gameCard,
+	}, { corner(10), stroke(T.Stroke, 1) })
+	local gameName = label({
+		Text = "Loading...",
+		Font = Zero.FontBold,
+		TextSize = 14,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Size = UDim2.new(1, -72, 0, 18),
+		Position = UDim2.fromOffset(70, 8),
+		Parent = gameCard,
+	})
+	label({
+		Text = "Place " .. game.PlaceId,
+		TextSize = 11,
+		TextColor3 = T.Accent,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Size = UDim2.new(1, -72, 0, 14),
+		Position = UDim2.fromOffset(70, 27),
+		Parent = gameCard,
+	})
+	label({
+		Text = game.JobId ~= "" and ("Server " .. string.sub(game.JobId, 1, 8)) or "Server",
+		TextSize = 10,
+		TextColor3 = T.SubText,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		Size = UDim2.new(1, -72, 0, 14),
+		Position = UDim2.fromOffset(70, 42),
+		Parent = gameCard,
+	})
+	task.spawn(function()
+		local ok, info = pcall(function()
+			return MarketplaceService:GetProductInfo(game.PlaceId)
+		end)
+		if gameName.Parent then
+			gameName.Text = ok and info and info.Name or game.Name
+		end
+	end)
+
+	local playersRow = gameSection:AddRow(34)
+	label({
+		Text = "Players",
+		TextColor3 = T.SubText,
+		Size = UDim2.new(1, -2, 0, 14),
+		Position = UDim2.fromOffset(1, 0),
+		Parent = playersRow,
+	})
+	local playersCount = label({
+		Text = "",
+		Font = Zero.FontBold,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		Size = UDim2.new(1, -2, 0, 14),
+		Position = UDim2.fromOffset(1, 0),
+		Parent = playersRow,
+	})
+	local track = create("Frame", {
+		Size = UDim2.new(1, -2, 0, 6),
+		Position = UDim2.fromOffset(1, 22),
+		BackgroundColor3 = T.Track,
+		BorderSizePixel = 0,
+		Parent = playersRow,
+	}, { corner(3) })
+	local fill = create("Frame", {
+		Size = UDim2.fromScale(0, 1),
+		BackgroundColor3 = T.Accent,
+		BorderSizePixel = 0,
+		Parent = track,
+	}, { corner(3), create("UIGradient", { Color = accentGradient() }) })
+
+	local function updatePlayers()
+		if not playersCount.Parent then
+			return
+		end
+		local current = #Players:GetPlayers()
+		local max = math.max(Players.MaxPlayers, current, 1)
+		playersCount.Text = current .. " / " .. max
+		tween(fill, { Size = UDim2.fromScale(current / max, 1) }, 0.25, Quint)
+	end
+	updatePlayers()
+	window:Bind(Players.PlayerAdded, updatePlayers)
+	window:Bind(Players.PlayerRemoving, function()
+		task.delay(0.2, updatePlayers)
+	end)
+
+	local server = tab:AddSection("Server", "Left", "server", "teleport")
+	local busy = false
+
+	server:AddButton({
+		Name = "Server Hop",
+		Callback = function()
+			if busy then
+				return
+			end
+			busy = true
+			window:Notify({ Title = "Server Hop", Content = "Searching for a server...", Duration = 3 })
+			local id = findServer()
+			if id then
+				window:Notify({ Title = "Server Hop", Content = "Teleporting...", Duration = 3 })
+				local ok = pcall(function()
+					TeleportService:TeleportToPlaceInstance(game.PlaceId, id, localPlayer)
+				end)
+				if not ok then
+					window:Notify({ Title = "Server Hop", Content = "Teleport failed", Duration = 3 })
+				end
+			else
+				window:Notify({ Title = "Server Hop", Content = "No server found", Duration = 3 })
+			end
+			task.delay(3, function()
+				busy = false
+			end)
+		end,
+	})
+
+	server:AddButton({
+		Name = "Rejoin Server",
+		Callback = function()
+			if busy then
+				return
+			end
+			busy = true
+			window:Notify({ Title = "Rejoin", Content = "Rejoining server...", Duration = 3 })
+			local ok = pcall(rejoinServer)
+			if not ok then
+				window:Notify({ Title = "Rejoin", Content = "Teleport failed", Duration = 3 })
+			end
+			task.delay(3, function()
+				busy = false
+			end)
+		end,
+	})
+
+	return tab
+end
+
 function Window:Notify(opts)
 	opts = opts or {}
 	local duration = opts.Duration or 4
@@ -2384,6 +2631,7 @@ function Zero:CreateWindow(opts)
 	local window = setmetatable({ Connections = {}, Tabs = {}, Flags = {}, Searchable = {}, Refreshers = {}, Shown = true }, Window)
 	window.LogoIcon = opts.Logo or "97669122739360"
 	window.ConfigFolder = opts.ConfigFolder or "ZeroConfigs"
+	window.Anonymous = opts.Anonymous == true
 
 	local parent = getGuiParent()
 	local old = parent:FindFirstChild("ZeroUi")

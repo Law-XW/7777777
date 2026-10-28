@@ -4,11 +4,13 @@ local Window = Library:CreateWindow({
 	Title = "Zero",
 	Logo = "97669122739360",
 	ConfigFolder = "ZeroConfigs",
-	Version = "1.6.0",
+	Version = "1.7.0",
 	Anonymous = true,
 })
 
 Window:SetWatermark("Zero")
+
+Window:AddHomeManager()
 
 local Tab = Window:AddTab("Example", "home")
 
