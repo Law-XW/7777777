@@ -57,7 +57,7 @@ end
 
 local Zero = {}
 Zero.__index = Zero
-Zero.Version = "1.9.0"
+Zero.Version = "1.9.2"
 Zero.Font = Enum.Font.Arial
 Zero.FontMedium = Enum.Font.Arial
 Zero.FontBold = Enum.Font.ArialBold
@@ -1531,15 +1531,16 @@ function Tab:SelectSubTab(sub)
 	for _, other in ipairs(self.SubTabs) do
 		local on = other == sub
 		other.Columns.Visible = on
-		tween(other.Button, { BackgroundTransparency = on and 0.9 or 1, BackgroundColor3 = on and T.Accent or T.Element }, 0.2)
+		tween(other.Button, { BackgroundTransparency = on and 0.88 or 0.4, BackgroundColor3 = on and T.Accent or T.Element }, 0.2)
+		tween(getStroke(other.Button), { Color = on and T.Accent or T.Stroke, Transparency = on and 0.45 or 0 }, 0.2)
 		tween(other.Label, { TextColor3 = on and T.Text or T.SubText }, 0.15)
 		if other.Icon then
 			tween(other.Icon, { ImageColor3 = on and T.Accent or T.SubText }, 0.15)
 		end
 	end
 	if changed then
-		sub.Columns.Position = UDim2.fromOffset(10, 58)
-		tween(sub.Columns, { Position = UDim2.fromOffset(10, 50) }, 0.3, Quint)
+		sub.Columns.Position = UDim2.fromOffset(10, 62)
+		tween(sub.Columns, { Position = UDim2.fromOffset(10, 54) }, 0.3, Quint)
 	end
 	self.ActiveSub = sub
 end
@@ -1551,8 +1552,8 @@ function Tab:AddSubTab(name, iconName)
 		parent.SubTabs = {}
 		parent.Columns.Visible = false
 		parent.SubBar = create("ScrollingFrame", {
-			Size = UDim2.new(1, -24, 0, 30),
-			Position = UDim2.fromOffset(10, 10),
+			Size = UDim2.new(1, -20, 0, 36),
+			Position = UDim2.fromOffset(6, 8),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
 			ScrollBarThickness = 0,
@@ -1561,6 +1562,7 @@ function Tab:AddSubTab(name, iconName)
 			AutomaticCanvasSize = Enum.AutomaticSize.X,
 			Parent = parent.Page,
 		}, {
+			padding(4, 3, 4, 3),
 			create("UIListLayout", {
 				FillDirection = Enum.FillDirection.Horizontal,
 				Padding = UDim.new(0, 6),
@@ -1575,7 +1577,7 @@ function Tab:AddSubTab(name, iconName)
 		Size = UDim2.new(0, 0, 1, 0),
 		AutomaticSize = Enum.AutomaticSize.X,
 		BackgroundColor3 = T.Element,
-		BackgroundTransparency = 1,
+		BackgroundTransparency = 0.4,
 		BorderSizePixel = 0,
 		Text = "",
 		AutoButtonColor = false,
@@ -1606,16 +1608,16 @@ function Tab:AddSubTab(name, iconName)
 	})
 	sub.Button.MouseEnter:Connect(function()
 		if parent.ActiveSub ~= sub then
-			tween(sub.Button, { BackgroundTransparency = 0.6 }, 0.12)
+			tween(sub.Button, { BackgroundTransparency = 0.15 }, 0.12)
 		end
 	end)
 	sub.Button.MouseLeave:Connect(function()
 		if parent.ActiveSub ~= sub then
-			tween(sub.Button, { BackgroundTransparency = 1 }, 0.15)
+			tween(sub.Button, { BackgroundTransparency = 0.4 }, 0.15)
 		end
 	end)
 
-	sub.Columns, sub.Left, sub.Right = makeColumns(parent.Page, 50)
+	sub.Columns, sub.Left, sub.Right = makeColumns(parent.Page, 54)
 	sub.Columns.Visible = false
 
 	table.insert(parent.SubTabs, sub)
@@ -2780,10 +2782,10 @@ function Zero:CreateWindow(opts)
 
 	local camera = workspace.CurrentCamera
 	local viewport = camera and camera.ViewportSize or Vector2.new(1280, 720)
-	local width = math.min(opts.Width or 620, viewport.X - 20)
-	local height = math.min(opts.Height or 380, viewport.Y - 20)
+	local width = math.floor(math.min(opts.Width or 620, viewport.X - 20) / 2) * 2
+	local height = math.floor(math.min(opts.Height or 380, viewport.Y - 20) / 2) * 2
 
-	local main = create("CanvasGroup", {
+	local main = create("Frame", {
 		Name = "Main",
 		Size = UDim2.fromOffset(width, height),
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -2808,9 +2810,15 @@ function Zero:CreateWindow(opts)
 		Name = "Top",
 		Size = UDim2.new(1, 0, 0, 38),
 		BackgroundColor3 = T.Section,
-		BackgroundTransparency = 0.35,
 		BorderSizePixel = 0,
 		Parent = main,
+	}, { corner(12) })
+	create("Frame", {
+		Size = UDim2.new(1, 0, 0, 20),
+		Position = UDim2.new(0, 0, 1, -20),
+		BackgroundColor3 = T.Section,
+		BorderSizePixel = 0,
+		Parent = top,
 	})
 	create("Frame", {
 		Size = UDim2.new(1, 0, 0, 1),
@@ -3015,9 +3023,21 @@ function Zero:CreateWindow(opts)
 	local sidebar = create("Frame", {
 		Size = UDim2.new(0, 130, 1, 0),
 		BackgroundColor3 = T.Section,
-		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		Parent = body,
+	}, { corner(12) })
+	create("Frame", {
+		Size = UDim2.new(1, 0, 0, 20),
+		BackgroundColor3 = T.Section,
+		BorderSizePixel = 0,
+		Parent = sidebar,
+	})
+	create("Frame", {
+		Size = UDim2.new(0, 20, 1, 0),
+		Position = UDim2.new(1, -20, 0, 0),
+		BackgroundColor3 = T.Section,
+		BorderSizePixel = 0,
+		Parent = sidebar,
 	})
 	create("Frame", {
 		Size = UDim2.new(0, 1, 1, 0),
@@ -3132,10 +3152,21 @@ function Zero:CreateWindow(opts)
 		Size = UDim2.new(1, -130, 0, 26),
 		Position = UDim2.new(0, 130, 1, -26),
 		BackgroundColor3 = T.Section,
-		BackgroundTransparency = 0.35,
 		BorderSizePixel = 0,
 		Parent = body,
-	}, { padding(12, 0, 12, 0) })
+	}, { corner(12) })
+	create("Frame", {
+		Size = UDim2.new(1, 0, 0, 14),
+		BackgroundColor3 = T.Section,
+		BorderSizePixel = 0,
+		Parent = footer,
+	})
+	create("Frame", {
+		Size = UDim2.new(0, 14, 1, 0),
+		BackgroundColor3 = T.Section,
+		BorderSizePixel = 0,
+		Parent = footer,
+	})
 	create("Frame", {
 		Size = UDim2.new(1, 0, 0, 1),
 		BackgroundColor3 = T.Stroke,
@@ -3147,7 +3178,8 @@ function Zero:CreateWindow(opts)
 		TextSize = 11,
 		TextColor3 = T.SubText,
 		TextTruncate = Enum.TextTruncate.AtEnd,
-		Size = UDim2.new(0.6, 0, 1, 0),
+		Size = UDim2.new(0.6, -12, 1, 0),
+		Position = UDim2.fromOffset(12, 0),
 		Parent = footer,
 	})
 	label({
@@ -3155,7 +3187,7 @@ function Zero:CreateWindow(opts)
 		TextSize = 11,
 		TextColor3 = T.SubText,
 		TextXAlignment = Enum.TextXAlignment.Right,
-		Size = UDim2.new(0.4, 0, 1, 0),
+		Size = UDim2.new(0.4, -12, 1, 0),
 		Position = UDim2.fromScale(0.6, 0),
 		Parent = footer,
 	})
