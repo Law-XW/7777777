@@ -4,8 +4,10 @@ local Window = Library:CreateWindow({
 	Title = "Zero",
 	Logo = "97669122739360",
 	ConfigFolder = "ZeroConfigs",
-	Version = "1.7.1",
+	Version = "1.8.0",
 	Footer = "Zero.gg",
+	Intro = true,
+	IntroText = "Loading...",
 	Anonymous = true,
 })
 

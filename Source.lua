@@ -57,7 +57,7 @@ end
 
 local Zero = {}
 Zero.__index = Zero
-Zero.Version = "1.7.1"
+Zero.Version = "1.8.0"
 Zero.Font = Enum.Font.Arial
 Zero.FontMedium = Enum.Font.Arial
 Zero.FontBold = Enum.Font.ArialBold
@@ -2691,7 +2691,10 @@ function Zero:CreateWindow(opts)
 	})
 	window.Main = main
 	window.Scale = main:FindFirstChildOfClass("UIScale")
-	tween(window.Scale, { Scale = 1 }, 0.45, Back)
+	local intro = opts.Intro ~= false
+	if not intro then
+		tween(window.Scale, { Scale = 1 }, 0.45, Back)
+	end
 
 	local top = create("Frame", {
 		Name = "Top",
@@ -3069,6 +3072,96 @@ function Zero:CreateWindow(opts)
 			window:SelectTab(window.Active)
 		end
 	end)
+
+	if intro then
+		main.Visible = false
+		toggle.Visible = false
+		local duration = opts.IntroTime or 1.6
+		local card = create("CanvasGroup", {
+			Name = "Intro",
+			Size = UDim2.fromOffset(240, 132),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			BackgroundColor3 = T.Section,
+			BorderSizePixel = 0,
+			GroupTransparency = 1,
+			ZIndex = 900,
+			Parent = gui,
+		}, {
+			corner(14),
+			stroke(T.Stroke, 1),
+			create("UIScale", { Scale = 0.85 }),
+		})
+		local introBox = create("Frame", {
+			Size = UDim2.fromOffset(44, 44),
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, 16),
+			BackgroundColor3 = T.Element,
+			BorderSizePixel = 0,
+			Parent = card,
+		}, { corner(12), stroke(T.Accent, 1) })
+		getStroke(introBox).Transparency = 0.45
+		local introLogo = icon(introBox, window.LogoIcon, 30, T.Accent)
+		introLogo.AnchorPoint = Vector2.new(0.5, 0.5)
+		introLogo.Position = UDim2.fromScale(0.5, 0.5)
+		label({
+			Text = opts.Title or "Zero",
+			Font = Zero.FontBold,
+			TextSize = 15,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			Size = UDim2.new(1, 0, 0, 18),
+			Position = UDim2.fromOffset(0, 68),
+			Parent = card,
+		})
+		local introText = label({
+			Text = opts.IntroText or "Loading...",
+			TextSize = 11,
+			TextColor3 = T.SubText,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			Size = UDim2.new(1, 0, 0, 14),
+			Position = UDim2.fromOffset(0, 88),
+			Parent = card,
+		})
+		local introTrack = create("Frame", {
+			Size = UDim2.new(1, -40, 0, 4),
+			Position = UDim2.new(0, 20, 1, -16),
+			BackgroundColor3 = T.Track,
+			BorderSizePixel = 0,
+			Parent = card,
+		}, { corner(2) })
+		local introFill = create("Frame", {
+			Size = UDim2.fromScale(0, 1),
+			BackgroundColor3 = T.Accent,
+			BorderSizePixel = 0,
+			Parent = introTrack,
+		}, { corner(2), create("UIGradient", { Color = accentGradient() }) })
+
+		local introScale = card:FindFirstChildOfClass("UIScale")
+		tween(card, { GroupTransparency = 0 }, 0.3)
+		tween(introScale, { Scale = 1 }, 0.45, Back)
+		tween(introFill, { Size = UDim2.fromScale(1, 1) }, duration, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+
+		task.spawn(function()
+			task.wait(duration * 0.6)
+			if introText.Parent then
+				introText.Text = "Almost ready..."
+			end
+			task.wait(duration * 0.4 + 0.15)
+			if not gui.Parent then
+				return
+			end
+			tween(card, { GroupTransparency = 1 }, 0.25)
+			tween(introScale, { Scale = 0.92 }, 0.25, Quint)
+			task.wait(0.25)
+			card:Destroy()
+			if not gui.Parent then
+				return
+			end
+			main.Visible = true
+			toggle.Visible = true
+			tween(window.Scale, { Scale = 1 }, 0.45, Back)
+		end)
+	end
 
 	return window
 end
