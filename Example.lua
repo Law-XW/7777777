@@ -4,7 +4,7 @@ local Window = Library:CreateWindow({
 	Title = "Zero",
 	Logo = "97669122739360",
 	ConfigFolder = "ZeroConfigs",
-	Version = "1.8.0",
+	Version = "1.9.0",
 	Footer = "Zero.gg",
 	Intro = true,
 	IntroText = "Loading...",
@@ -140,6 +140,59 @@ Inputs:AddColorPicker({
 	Callback = function(Color)
 		print("Example Color Picker", Color)
 	end,
+})
+
+local Combat = Window:AddTab("Combat", "swords")
+
+local Aimbot = Combat:AddSubTab("Aimbot", "crosshair")
+local AimbotMain = Aimbot:AddSection("Aimbot", "Left", "crosshair", "main")
+AimbotMain:AddToggle({
+	Name = "Enabled",
+	Default = false,
+	Flag = "AimbotEnabled",
+})
+AimbotMain:AddSlider({
+	Name = "Smoothness",
+	Min = 0,
+	Max = 100,
+	Default = 20,
+	Increment = 1,
+	Suffix = "%",
+	Flag = "AimbotSmoothness",
+})
+local AimbotFov = Aimbot:AddSection("Field of View", "Right", "circle", "fov")
+AimbotFov:AddSlider({
+	Name = "Radius",
+	Min = 10,
+	Max = 500,
+	Default = 120,
+	Increment = 1,
+	Suffix = " px",
+	Flag = "AimbotRadius",
+})
+AimbotFov:AddColorPicker({
+	Name = "Circle Color",
+	Default = Color3.fromRGB(52, 168, 222),
+	Flag = "AimbotCircleColor",
+})
+
+local Visuals = Combat:AddSubTab("Visuals", "eye")
+local VisualsMain = Visuals:AddSection("ESP", "Left", "eye", "visuals")
+VisualsMain:AddToggle({
+	Name = "Boxes",
+	Default = false,
+	Flag = "EspBoxes",
+})
+VisualsMain:AddToggle({
+	Name = "Names",
+	Default = false,
+	Flag = "EspNames",
+})
+local VisualsColors = Visuals:AddSection("Colors", "Right", "palette", "colors")
+VisualsColors:AddColorPicker({
+	Name = "Box Color",
+	Default = Color3.fromRGB(255, 120, 90),
+	Flag = "EspBoxColor",
 })
 
 Window:AddSettingsManager()

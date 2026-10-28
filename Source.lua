@@ -57,7 +57,7 @@ end
 
 local Zero = {}
 Zero.__index = Zero
-Zero.Version = "1.8.0"
+Zero.Version = "1.9.0"
 Zero.Font = Enum.Font.Arial
 Zero.FontMedium = Enum.Font.Arial
 Zero.FontBold = Enum.Font.ArialBold
@@ -1427,6 +1427,38 @@ local function buildElements(window, container, tab, popup)
 	return api
 end
 
+local function makeColumns(parent, y)
+	local columns = create("Frame", {
+		Size = UDim2.new(1, -24, 0, 0),
+		Position = UDim2.fromOffset(10, y),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+		Parent = parent,
+	}, {
+		create("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			Padding = UDim.new(0, 10),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			VerticalAlignment = Enum.VerticalAlignment.Top,
+		}),
+	})
+	local left = create("Frame", {
+		Size = UDim2.new(0.5, -5, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+		LayoutOrder = 1,
+		Parent = columns,
+	}, { create("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }) })
+	local right = create("Frame", {
+		Size = UDim2.new(0.5, -5, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+		LayoutOrder = 2,
+		Parent = columns,
+	}, { create("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }) })
+	return columns, left, right
+end
+
 function Tab:AddSection(name, side, iconName, tag)
 	local column
 	if side == "Right" then
@@ -1491,7 +1523,110 @@ function Tab:AddSection(name, side, iconName, tag)
 		Parent = header,
 	})
 
-	return buildElements(self.Window, frame, self, false)
+	return buildElements(self.Window, frame, self.Owner or self, false)
+end
+
+function Tab:SelectSubTab(sub)
+	local changed = self.ActiveSub ~= sub
+	for _, other in ipairs(self.SubTabs) do
+		local on = other == sub
+		other.Columns.Visible = on
+		tween(other.Button, { BackgroundTransparency = on and 0.9 or 1, BackgroundColor3 = on and T.Accent or T.Element }, 0.2)
+		tween(other.Label, { TextColor3 = on and T.Text or T.SubText }, 0.15)
+		if other.Icon then
+			tween(other.Icon, { ImageColor3 = on and T.Accent or T.SubText }, 0.15)
+		end
+	end
+	if changed then
+		sub.Columns.Position = UDim2.fromOffset(10, 58)
+		tween(sub.Columns, { Position = UDim2.fromOffset(10, 50) }, 0.3, Quint)
+	end
+	self.ActiveSub = sub
+end
+
+function Tab:AddSubTab(name, iconName)
+	local parent = self
+	local window = self.Window
+	if not parent.SubBar then
+		parent.SubTabs = {}
+		parent.Columns.Visible = false
+		parent.SubBar = create("ScrollingFrame", {
+			Size = UDim2.new(1, -24, 0, 30),
+			Position = UDim2.fromOffset(10, 10),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ScrollBarThickness = 0,
+			ScrollingDirection = Enum.ScrollingDirection.X,
+			CanvasSize = UDim2.new(),
+			AutomaticCanvasSize = Enum.AutomaticSize.X,
+			Parent = parent.Page,
+		}, {
+			create("UIListLayout", {
+				FillDirection = Enum.FillDirection.Horizontal,
+				Padding = UDim.new(0, 6),
+				SortOrder = Enum.SortOrder.LayoutOrder,
+				VerticalAlignment = Enum.VerticalAlignment.Center,
+			}),
+		})
+	end
+
+	local sub = setmetatable({ Window = window, Owner = parent, Name = name, Counts = { Left = 0, Right = 0 } }, Tab)
+	sub.Button = create("TextButton", {
+		Size = UDim2.new(0, 0, 1, 0),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundColor3 = T.Element,
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Text = "",
+		AutoButtonColor = false,
+		LayoutOrder = #parent.SubTabs + 1,
+		Parent = parent.SubBar,
+	}, {
+		corner(7),
+		stroke(T.Stroke, 1),
+		padding(11, 0, 11, 0),
+		create("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			Padding = UDim.new(0, 6),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+		}),
+	})
+	if iconName then
+		sub.Icon = icon(sub.Button, iconName, 14, T.SubText)
+		sub.Icon.LayoutOrder = 1
+	end
+	sub.Label = label({
+		Text = name or "Sub",
+		TextColor3 = T.SubText,
+		Size = UDim2.new(0, 0, 0, 14),
+		AutomaticSize = Enum.AutomaticSize.X,
+		LayoutOrder = 2,
+		Parent = sub.Button,
+	})
+	sub.Button.MouseEnter:Connect(function()
+		if parent.ActiveSub ~= sub then
+			tween(sub.Button, { BackgroundTransparency = 0.6 }, 0.12)
+		end
+	end)
+	sub.Button.MouseLeave:Connect(function()
+		if parent.ActiveSub ~= sub then
+			tween(sub.Button, { BackgroundTransparency = 1 }, 0.15)
+		end
+	end)
+
+	sub.Columns, sub.Left, sub.Right = makeColumns(parent.Page, 50)
+	sub.Columns.Visible = false
+
+	table.insert(parent.SubTabs, sub)
+	sub.Button.MouseButton1Click:Connect(function()
+		window:ClosePicker()
+		parent:SelectSubTab(sub)
+	end)
+	if #parent.SubTabs == 1 then
+		parent:SelectSubTab(sub)
+	end
+	return sub
 end
 
 function Window:SelectTab(tab)
@@ -1609,34 +1744,7 @@ function Window:AddTab(name, iconName)
 		Parent = self.Pages,
 	})
 
-	local columns = create("Frame", {
-		Size = UDim2.new(1, -24, 0, 0),
-		Position = UDim2.fromOffset(10, 10),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundTransparency = 1,
-		Parent = tab.Page,
-	}, {
-		create("UIListLayout", {
-			FillDirection = Enum.FillDirection.Horizontal,
-			Padding = UDim.new(0, 10),
-			SortOrder = Enum.SortOrder.LayoutOrder,
-			VerticalAlignment = Enum.VerticalAlignment.Top,
-		}),
-	})
-	tab.Left = create("Frame", {
-		Size = UDim2.new(0.5, -5, 0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundTransparency = 1,
-		LayoutOrder = 1,
-		Parent = columns,
-	}, { create("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }) })
-	tab.Right = create("Frame", {
-		Size = UDim2.new(0.5, -5, 0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundTransparency = 1,
-		LayoutOrder = 2,
-		Parent = columns,
-	}, { create("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }) })
+	tab.Columns, tab.Left, tab.Right = makeColumns(tab.Page, 10)
 
 	table.insert(self.Tabs, tab)
 	tab.Button.MouseButton1Click:Connect(function()
