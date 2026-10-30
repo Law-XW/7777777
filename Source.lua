@@ -2044,9 +2044,218 @@ function Window:AddHomeManager(opts)
 	return tab
 end
 
+function Window:ApplyRivalsProtection()
+	local runtime = type(getgenv) == "function" and getgenv() or _G
+	if runtime.RivalsProtectionApplied then
+		return
+	end
+	runtime.RivalsProtectionApplied = true
+
+	local original_debug_info = debug.info
+
+	local exec_funcs = {
+		"getgenv", "hookfunction", "getrawmetatable", "hookmetamethod", "setreadonly",
+		"islclosure", "checkcaller", "getnamecallmethod", "setnamecallmethod",
+		"newcclosure", "getconnections", "getloadedmodules", "getsenv", "getreg",
+		"getgc", "debug_getupvalues", "identifyexecutor", "getexecutorname",
+		"request", "syn", "fluxus", "clonereference", "getcallingscript",
+		"replicatesignal", "getscriptbytecode", "firesignal", "getupvalue",
+		"getconstants", "getproto", "getstack"
+	}
+
+	local saved = {}
+	local genv = getfenv()
+	if not genv.getgenv then
+		local ok, g = pcall(getgenv)
+		if ok then genv = g end
+	end
+
+	for _, name in ipairs(exec_funcs) do
+		if genv[name] then
+			saved[name] = genv[name]
+		end
+	end
+
+	local newcclosure = saved.newcclosure or function(f) return f end
+	local setreadonly = saved.setreadonly or function() end
+	local getnamecallmethod = saved.getnamecallmethod or function() return "" end
+	local old_getfenv = genv.getfenv or getfenv
+	local old_getgc = saved.getgc or getgc
+	local old_getrawmetatable = saved.getrawmetatable or getmetatable
+
+	local blocked_sources = {
+		"LocalScript3", "MiscellaneousController", "ClientFighter", "Root",
+		"CameraController", "ReplicatedController", "Camera", "out.lua"
+	}
+
+	local function is_anticheat(max_level)
+		max_level = max_level or 5
+		for i = 2, max_level do
+			local info = original_debug_info(i, "s")
+			if not info then break end
+			for _, src in ipairs(blocked_sources) do
+				if string.find(info, src, 1, true) then return true end
+			end
+		end
+		return false
+	end
+
+	pcall(function()
+		local function hooked_getfenv(level)
+			if is_anticheat(5) then
+				local real = old_getfenv(level)
+				if type(real) == "table" then
+					return setmetatable({}, {
+						__index = function(_, k)
+							if saved[k] then return nil end
+							return real[k]
+						end,
+						__newindex = function(_, k, v) real[k] = v end,
+						__metatable = "Locked"
+					})
+				end
+			end
+			return old_getfenv(level)
+		end
+		rawset(genv, "getfenv", newcclosure(hooked_getfenv))
+	end)
+
+	local function trap(obj)
+		local ok, mt = pcall(old_getrawmetatable, obj)
+		if not ok or not mt then return false end
+		return mt.__tostring ~= nil
+			or mt.__index ~= nil
+			or mt.__newindex ~= nil
+			or mt.__call ~= nil
+			or mt.__len ~= nil
+	end
+
+	pcall(function()
+		local function hooked_getgc(includeTables)
+			local res = old_getgc(includeTables)
+			local out = {}
+			for _, v in ipairs(res) do
+				if not trap(v) then
+					table.insert(out, v)
+				end
+			end
+			return out
+		end
+		rawset(genv, "getgc", newcclosure(hooked_getgc))
+	end)
+
+	pcall(function()
+		if saved.debug_getupvalues or (debug and debug.getupvalue) then
+			local noop = newcclosure(function() end)
+			rawset(genv, "debug.getupvalue", noop)
+			if debug then
+				rawset(debug, "getupvalue", noop)
+				rawset(debug, "getconstants", noop)
+				rawset(debug, "getproto", noop)
+				rawset(debug, "getstack", noop)
+			end
+		end
+	end)
+
+	local killed_r = false
+	local function neutralize_shared_r_table(t)
+		local ok, mt = pcall(old_getrawmetatable, t)
+		if ok and mt then
+			pcall(setreadonly, mt, false)
+			pcall(function()
+				mt.__index = function() return function() end end
+				mt.__newindex = function() end
+				mt.__call = function() end
+			end)
+			pcall(setreadonly, mt, true)
+			return true
+		end
+		return false
+	end
+
+	local function kill_r()
+		if not (shared and shared.r) then return false end
+		if neutralize_shared_r_table(shared.r) then
+			killed_r = true
+			return true
+		end
+		return false
+	end
+
+	if not kill_r() then
+		local ok_mt, shared_mt = pcall(old_getrawmetatable, shared)
+		if ok_mt and shared_mt then
+			pcall(setreadonly, shared_mt, false)
+			local old_newindex = shared_mt.__newindex
+			shared_mt.__newindex = function(t, k, v)
+				if k == "r" and type(v) == "table" then
+					if neutralize_shared_r_table(v) then
+						killed_r = true
+					end
+				end
+				return old_newindex(t, k, v)
+			end
+			pcall(setreadonly, shared_mt, true)
+		else
+			task.spawn(function()
+				while not killed_r do
+					pcall(kill_r)
+					task.wait(0.1)
+				end
+			end)
+		end
+	end
+
+	pcall(function()
+		local mtInstance = old_getrawmetatable(game)
+		local oldNamecall = mtInstance.__namecall
+		local oldNewindex = mtInstance.__newindex
+		local protected_services = {
+			[game:GetService("Players")] = true,
+			[workspace] = true,
+			[ReplicatedStorage] = true,
+			[game:GetService("ReplicatedFirst")] = true
+		}
+		pcall(setreadonly, mtInstance, false)
+		mtInstance.__namecall = newcclosure(function(self, ...)
+			local method = getnamecallmethod()
+			if method == "Kick" then
+				error("Kick is disabled")
+				return
+			end
+			if method == "PreloadAsync" and is_anticheat(5) then
+				return
+			end
+			return oldNamecall(self, ...)
+		end)
+		mtInstance.__newindex = newcclosure(function(self, k, v)
+			if type(k) ~= "string" then
+				error("Invalid key type")
+			end
+			if k == "Name" and protected_services[self] then
+				return
+			end
+			return oldNewindex(self, k, v)
+		end)
+		pcall(setreadonly, mtInstance, true)
+	end)
+
+	pcall(function()
+		if not rawget(genv, "LPH_CRASH") then
+			rawset(genv, "LPH_CRASH", function() end)
+		end
+	end)
+
+	warn("wait atleast 4 seconds before running any detected scripts")
+end
+
 function Window:AddRivalsSkinChanger(opts)
 	opts = opts or {}
 	local window = self
+
+	if opts.Protection ~= false then
+		window:ApplyRivalsProtection()
+	end
 	local localPlayer = Players.LocalPlayer
 
 	local cfg = {
