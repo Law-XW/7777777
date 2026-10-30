@@ -7,6 +7,7 @@ local HttpService = game:GetService("HttpService")
 local Stats = game:GetService("Stats")
 local TeleportService = game:GetService("TeleportService")
 local MarketplaceService = game:GetService("MarketplaceService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Lucide
 pcall(function()
@@ -877,7 +878,7 @@ local function buildElements(window, container, tab, popup)
 			tween(ring, { Color = T.Stroke }, 0.15)
 			safe(opts.Callback, box.Text, enterPressed)
 		end)
-		local obj = {}
+		local obj = { Box = box }
 		function obj:Set(value, silent)
 			box.Text = tostring(value)
 			if not silent then
@@ -2041,6 +2042,929 @@ function Window:AddHomeManager(opts)
 	})
 
 	return tab
+end
+
+function Window:AddRivalsSkinChanger(opts)
+	opts = opts or {}
+	local window = self
+	local localPlayer = Players.LocalPlayer
+
+	local cfg = {
+		Name = opts.Name or "Skins",
+		Icon = opts.Icon or "shirt",
+		Timeout = opts.Timeout or 10,
+		GalleryHeight = opts.GalleryHeight or 290,
+	}
+
+	local function loadGame()
+		local modules = ReplicatedStorage:WaitForChild("Modules", cfg.Timeout)
+		local playerScripts = localPlayer:WaitForChild("PlayerScripts", cfg.Timeout)
+		local remotes = ReplicatedStorage:WaitForChild("Remotes", cfg.Timeout)
+
+		if not modules or not playerScripts or not remotes then
+			return nil
+		end
+
+		local controllers = playerScripts:WaitForChild("Controllers", cfg.Timeout)
+		local assets = playerScripts:WaitForChild("Assets", cfg.Timeout)
+		local dataRemotes = remotes:WaitForChild("Data", cfg.Timeout)
+
+		if not controllers or not assets or not dataRemotes then
+			return nil
+		end
+
+		local viewModels = assets:WaitForChild("ViewModels", cfg.Timeout)
+		local equipRemote = dataRemotes:WaitForChild("EquipCosmetic", cfg.Timeout)
+
+		if not viewModels or not equipRemote then
+			return nil
+		end
+
+		return {
+			cosmetics = require(modules:WaitForChild("CosmeticLibrary", cfg.Timeout)),
+			items = require(modules:WaitForChild("ItemLibrary", cfg.Timeout)),
+			replicated = require(modules:WaitForChild("ReplicatedClass", cfg.Timeout)),
+			data = require(controllers:WaitForChild("PlayerDataController", cfg.Timeout)),
+			viewModels = viewModels,
+			equipRemote = equipRemote,
+		}
+	end
+
+	local loaded, gameData = pcall(loadGame)
+	local tab = window:AddTab(cfg.Name, cfg.Icon)
+	cfg.Tab = tab
+
+	if not loaded or not gameData then
+		local status = tab:AddSection("Skin Changer", "Left", "info", "status")
+		status:AddLabel("Rivals was not detected. The skin changer only works inside Rivals.")
+		local info = tab:AddSection("Info", "Right", "shirt", "rivals")
+		info:AddLabel("Join Rivals and run the script again to use the skin changer.")
+		return cfg
+	end
+
+	local env = type(getgenv) == "function" and getgenv() or _G
+	env.RivalsSkinState = env.RivalsSkinState or { overrides = {}, originals = {}, hooked = false, unlock = true, applying = false }
+
+	local state = env.RivalsSkinState
+	state.game = gameData
+	state.viewSet = {}
+
+	for _, descendant in ipairs(gameData.viewModels:GetDescendants()) do
+		if not state.viewSet[descendant.Name] or descendant:IsA("Model") then
+			state.viewSet[descendant.Name] = descendant
+		end
+	end
+
+	local rng = Random.new()
+	local gallery = { entries = {}, search = "", filter = "All" }
+	local byWeapon = {}
+	local weaponNames = {}
+
+	local function toImage(value)
+		if type(value) == "number" and value > 0 then
+			return "rbxassetid://" .. tostring(value)
+		end
+
+		if type(value) == "string" and value ~= "" then
+			if tonumber(value) then
+				return "rbxassetid://" .. value
+			end
+
+			if string.sub(value, 1, 13) == "rbxassetid://" or string.sub(value, 1, 11) == "rbxthumb://" or string.sub(value, 1, 4) == "http" then
+				return value
+			end
+		end
+
+		return nil
+	end
+
+	local imageTokens = { "image", "icon", "thumb", "preview", "decal" }
+
+	local function findImage(info)
+		for key, value in pairs(info) do
+			if type(key) == "string" then
+				local lowered = string.lower(key)
+
+				for _, token in ipairs(imageTokens) do
+					if string.find(lowered, token, 1, true) then
+						local image = toImage(value)
+
+						if image then
+							return image
+						end
+					end
+				end
+			end
+		end
+
+		return nil
+	end
+
+	local function collect(strict)
+		table.clear(byWeapon)
+		table.clear(weaponNames)
+
+		local total = 0
+
+		for skinName, info in pairs(gameData.cosmetics.Cosmetics) do
+			if type(skinName) == "string" and type(info) == "table" and info.Type == "Skin" and type(info.ItemName) == "string" then
+				local usable = not strict or (gameData.items.ViewModels[skinName] ~= nil and state.viewSet[skinName] ~= nil)
+
+				if usable then
+					local list = byWeapon[info.ItemName]
+
+					if not list then
+						list = {}
+						byWeapon[info.ItemName] = list
+						table.insert(weaponNames, info.ItemName)
+					end
+
+					table.insert(list, { weapon = info.ItemName, skin = skinName, image = findImage(info) })
+					total += 1
+				end
+			end
+		end
+
+		return total
+	end
+
+	if collect(true) == 0 then
+		collect(false)
+	end
+
+	table.sort(weaponNames)
+
+	for _, weaponName in ipairs(weaponNames) do
+		table.sort(byWeapon[weaponName], function(a, b)
+			return a.skin < b.skin
+		end)
+	end
+
+	local function selectedSkin(weaponName)
+		local entry = state.overrides[weaponName]
+
+		if entry and entry.Skin and entry.Skin.Name then
+			return entry.Skin.Name
+		end
+
+		return nil
+	end
+
+	local function replicate()
+		local data = state.game.data.CurrentData
+
+		if not data then
+			return
+		end
+
+		state.applying = true
+
+		pcall(function()
+			data:Replicate("WeaponInventory")
+		end)
+
+		state.applying = false
+	end
+
+	local function applyAll()
+		local controller = state.game.data
+
+		if not controller.CurrentData then
+			return
+		end
+
+		local changed = false
+
+		for weaponName, types in pairs(state.overrides) do
+			local weaponData = controller:GetWeaponData(weaponName)
+
+			if weaponData then
+				state.originals[weaponName] = state.originals[weaponName] or {}
+
+				for cosmeticType, value in pairs(types) do
+					local target = value or nil
+					local current = weaponData[cosmeticType]
+
+					if state.originals[weaponName][cosmeticType] == nil then
+						state.originals[weaponName][cosmeticType] = current or false
+					end
+
+					if (current and current.Name) ~= (target and target.Name) then
+						weaponData[cosmeticType] = target
+						changed = true
+					end
+				end
+			end
+		end
+
+		if changed then
+			replicate()
+		end
+	end
+
+	local function restore(weaponName)
+		local controller = state.game.data
+		local originals = state.originals[weaponName]
+
+		state.originals[weaponName] = nil
+
+		if not originals or not controller.CurrentData then
+			return
+		end
+
+		local weaponData = controller:GetWeaponData(weaponName)
+
+		if not weaponData then
+			return
+		end
+
+		for cosmeticType, original in pairs(originals) do
+			if not state.overrides[weaponName] or state.overrides[weaponName][cosmeticType] == nil then
+				weaponData[cosmeticType] = original or nil
+			end
+		end
+
+		replicate()
+	end
+
+	local function setSkin(weaponName, skinName)
+		state.overrides[weaponName] = state.overrides[weaponName] or {}
+		state.overrides[weaponName].Skin = { Name = skinName }
+	end
+
+	local function clearSkin(weaponName)
+		local entry = state.overrides[weaponName]
+
+		if entry then
+			entry.Skin = nil
+
+			if next(entry) == nil then
+				state.overrides[weaponName] = nil
+			end
+		end
+
+		restore(weaponName)
+	end
+
+	local function ownsFor(inventory, name, weaponName)
+		if not inventory then
+			return false
+		end
+
+		local owned = inventory[name]
+
+		if owned == true then
+			return true
+		end
+
+		if type(owned) == "table" then
+			if owned.IsUniversal then
+				return true
+			end
+
+			if weaponName and owned[weaponName] then
+				return true
+			end
+		end
+
+		return false
+	end
+
+	local refreshSelection
+
+	local function handleEquip(weaponName, cosmeticType, name, extra)
+		if type(weaponName) ~= "string" or type(cosmeticType) ~= "string" then
+			return false
+		end
+
+		local inventory = state.game.data:Get("CosmeticInventory")
+
+		if name ~= nil and ownsFor(inventory, name, weaponName) then
+			if state.overrides[weaponName] then
+				state.overrides[weaponName][cosmeticType] = nil
+			end
+
+			return false
+		end
+
+		if name == nil and not (state.overrides[weaponName] and state.overrides[weaponName][cosmeticType]) then
+			return false
+		end
+
+		state.overrides[weaponName] = state.overrides[weaponName] or {}
+
+		if name then
+			state.overrides[weaponName][cosmeticType] = {
+				Name = name,
+				Inverted = type(extra) == "table" and extra.IsInverted or nil,
+			}
+		else
+			state.overrides[weaponName][cosmeticType] = false
+		end
+
+		task.defer(function()
+			applyAll()
+
+			if state.refresh then
+				state.refresh()
+			end
+		end)
+
+		return true
+	end
+
+	state.handleEquip = handleEquip
+
+	if not state.hooked then
+		state.hooked = true
+
+		pcall(function()
+			if setreadonly then
+				setreadonly(gameData.cosmetics, false)
+			end
+		end)
+
+		for _, methodName in ipairs({ "OwnsCosmetic", "OwnsCosmeticNormally", "OwnsCosmeticUniversally", "OwnsCosmeticForWeapon", "OwnsCosmeticForSomething" }) do
+			local original = gameData.cosmetics[methodName]
+
+			gameData.cosmetics[methodName] = function(...)
+				if state.unlock then
+					return true
+				end
+
+				if original then
+					return original(...)
+				end
+
+				return false
+			end
+		end
+
+		pcall(function()
+			if setreadonly then
+				setreadonly(gameData.replicated, false)
+			end
+		end)
+
+		local originalGet = gameData.replicated.Get
+
+		gameData.replicated.Get = function(selfClass, key)
+			local value = originalGet(selfClass, key)
+
+			if key ~= "Name" or type(value) ~= "string" then
+				return value
+			end
+
+			if not rawget(selfClass, "ClientItem") or rawget(selfClass, "Info") then
+				return value
+			end
+
+			local current = state.game
+			local info = current.cosmetics.Cosmetics[value]
+			local base = info and info.Type == "Skin" and info.ItemName or value
+			local weaponOverrides = state.overrides[base]
+
+			if not weaponOverrides then
+				return value
+			end
+
+			if weaponOverrides.Skin == false then
+				return base
+			end
+
+			local skinName = weaponOverrides.Skin and weaponOverrides.Skin.Name
+
+			if skinName and current.items.ViewModels[skinName] and (state.viewSet[skinName] or current.viewModels:FindFirstChild(skinName, true)) then
+				return skinName
+			end
+
+			return value
+		end
+
+		if hookmetamethod and getnamecallmethod and newcclosure then
+			local oldNamecall
+
+			oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(selfRemote, ...)
+				if selfRemote == state.game.equipRemote and getnamecallmethod() == "FireServer" then
+					local weaponName, cosmeticType, name, extra = ...
+
+					if state.handleEquip(weaponName, cosmeticType, name, extra) then
+						return
+					end
+				end
+
+				return oldNamecall(selfRemote, ...)
+			end))
+		end
+	end
+
+	task.spawn(function()
+		state.game.data:WaitUntilLoaded()
+
+		window:Bind(state.game.data:GetDataChangedSignal("WeaponInventory"), function()
+			if not state.applying then
+				applyAll()
+			end
+		end)
+
+		applyAll()
+
+		window:Bind(state.game.data.PlayerDataAdded, function()
+			task.defer(applyAll)
+		end)
+	end)
+
+	local function entryMatches(entry)
+		if gallery.filter ~= "All" and gallery.filter ~= entry.weapon then
+			return false
+		end
+
+		if gallery.search == "" then
+			return true
+		end
+
+		return string.find(string.lower(entry.skin), gallery.search, 1, true) ~= nil
+			or string.find(string.lower(entry.weapon), gallery.search, 1, true) ~= nil
+	end
+
+	local function applyFilters()
+		for _, entry in ipairs(gallery.entries) do
+			local visible = entryMatches(entry)
+
+			if entry.card.Visible ~= visible then
+				entry.card.Visible = visible
+			end
+		end
+	end
+
+	refreshSelection = function()
+		for _, entry in ipairs(gallery.entries) do
+			entry.setSelected(selectedSkin(entry.weapon) == entry.skin)
+		end
+	end
+
+	state.refresh = refreshSelection
+	table.insert(window.Refreshers, refreshSelection)
+
+	local function selectEntry(entry)
+		if selectedSkin(entry.weapon) == entry.skin then
+			clearSkin(entry.weapon)
+		else
+			setSkin(entry.weapon, entry.skin)
+			applyAll()
+		end
+
+		refreshSelection()
+	end
+
+	local function buildPreview(parent, skinName)
+		local source = state.viewSet[skinName]
+
+		if not source then
+			return
+		end
+
+		local frame = create("ViewportFrame", {
+			Name = "Preview",
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0, 8, 0.5, 0),
+			Size = UDim2.fromOffset(72, 42),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Ambient = Color3.fromRGB(200, 200, 200),
+			LightColor = Color3.fromRGB(255, 255, 255),
+			Parent = parent,
+		})
+
+		pcall(function()
+			local model = Instance.new("Model")
+			local clone = source:Clone()
+
+			if clone:IsA("Model") then
+				model = clone
+			else
+				for _, child in ipairs(clone:GetChildren()) do
+					child.Parent = model
+				end
+			end
+
+			for _, descendant in ipairs(model:GetDescendants()) do
+				if descendant:IsA("BaseScript") then
+					descendant:Destroy()
+				end
+			end
+
+			model.Parent = frame
+
+			local center, size = model:GetBoundingBox()
+			local viewportCamera = Instance.new("Camera")
+
+			viewportCamera.FieldOfView = 40
+			viewportCamera.CFrame = CFrame.lookAt(center.Position + Vector3.new(size.Magnitude, size.Y * 0.3, size.Magnitude) * 0.9, center.Position)
+			viewportCamera.Parent = frame
+
+			frame.CurrentCamera = viewportCamera
+		end)
+	end
+
+	local function buildCard(parent, entry, order)
+		local card = create("TextButton", {
+			Name = "Card",
+			Size = UDim2.new(1, -2, 0, 56),
+			BackgroundColor3 = T.Element,
+			BorderSizePixel = 0,
+			Text = "",
+			AutoButtonColor = false,
+			LayoutOrder = order,
+			Visible = entryMatches(entry),
+			Parent = parent,
+		}, { corner(6), stroke(T.Stroke, 1) })
+
+		local ring = getStroke(card)
+
+		local accent = create("Frame", {
+			Size = UDim2.new(0, 3, 1, -16),
+			Position = UDim2.fromOffset(0, 8),
+			BackgroundColor3 = T.Accent,
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Parent = card,
+		}, { corner(2) })
+
+		if entry.image then
+			create("ImageLabel", {
+				AnchorPoint = Vector2.new(0, 0.5),
+				Position = UDim2.new(0, 8, 0.5, 0),
+				Size = UDim2.fromOffset(72, 42),
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				ScaleType = Enum.ScaleType.Fit,
+				Image = entry.image,
+				Parent = card,
+			})
+		else
+			buildPreview(card, entry.skin)
+		end
+
+		local skinLabel = label({
+			Text = entry.skin,
+			Font = Zero.FontBold,
+			TextSize = 12,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			Position = UDim2.fromOffset(88, 10),
+			Size = UDim2.new(1, -96, 0, 18),
+			Parent = card,
+		})
+
+		label({
+			Text = entry.weapon,
+			TextSize = 11,
+			TextColor3 = T.SubText,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			Position = UDim2.fromOffset(88, 30),
+			Size = UDim2.new(1, -96, 0, 16),
+			Parent = card,
+		})
+
+		function entry.setSelected(bool)
+			skinLabel.TextColor3 = bool and T.Accent or T.Text
+			accent.BackgroundColor3 = T.Accent
+			tween(accent, { BackgroundTransparency = bool and 0 or 1 }, 0.15)
+			tween(ring, { Color = bool and T.Accent or T.Stroke }, 0.15)
+		end
+
+		card.MouseEnter:Connect(function()
+			tween(card, { BackgroundColor3 = T.ElementHover }, 0.12)
+		end)
+
+		card.MouseLeave:Connect(function()
+			tween(card, { BackgroundColor3 = T.Element }, 0.15)
+		end)
+
+		entry.card = card
+
+		card.MouseButton1Click:Connect(function()
+			selectEntry(entry)
+		end)
+	end
+
+	local function note(text)
+		window:Notify({ Title = "Skins", Content = text, Duration = 2.5 })
+	end
+
+	local function resetAllSilent()
+		local touched = {}
+
+		for weaponName in pairs(state.overrides) do
+			table.insert(touched, weaponName)
+		end
+
+		for _, weaponName in ipairs(touched) do
+			clearSkin(weaponName)
+		end
+	end
+
+	function cfg.RandomizeWeapon(weaponName)
+		local list = byWeapon[weaponName]
+
+		if not list or #list == 0 then
+			return
+		end
+
+		setSkin(weaponName, list[rng:NextInteger(1, #list)].skin)
+	end
+
+	function cfg.RandomizeAll()
+		for _, weaponName in ipairs(weaponNames) do
+			cfg.RandomizeWeapon(weaponName)
+		end
+
+		applyAll()
+		refreshSelection()
+		note("Randomized all skins")
+	end
+
+	function cfg.RandomizeSelected()
+		if gallery.filter == "All" then
+			note("Select a weapon first")
+			return
+		end
+
+		cfg.RandomizeWeapon(gallery.filter)
+		applyAll()
+		refreshSelection()
+		note("Randomized " .. gallery.filter)
+	end
+
+	function cfg.ResetSelected()
+		if gallery.filter == "All" then
+			note("Select a weapon first")
+			return
+		end
+
+		clearSkin(gallery.filter)
+		refreshSelection()
+		note("Reset " .. gallery.filter)
+	end
+
+	function cfg.ResetAll()
+		resetAllSilent()
+		refreshSelection()
+		note("Reset all skins")
+	end
+
+	local skinsSub = tab:AddSubTab("Skins", "crosshair")
+	local settingsSub = tab:AddSubTab("Settings", "settings")
+	local configSub = tab:AddSubTab("Config", "folder")
+
+	local filters = skinsSub:AddSection("Rivals Skins", "Left", "crosshair", "filter")
+
+	local searchBox = filters:AddTextbox({
+		Name = "Search",
+		Placeholder = "Skin or weapon",
+	})
+
+	searchBox.Box:GetPropertyChangedSignal("Text"):Connect(function()
+		gallery.search = string.lower(string.match(searchBox.Box.Text, "^%s*(.-)%s*$") or "")
+		applyFilters()
+	end)
+
+	local filterItems = { "All" }
+
+	for _, weaponName in ipairs(weaponNames) do
+		table.insert(filterItems, weaponName)
+	end
+
+	filters:AddDropdown({
+		Name = "Weapon",
+		Options = filterItems,
+		Default = "All",
+		Callback = function(value)
+			gallery.filter = type(value) == "string" and value or "All"
+			applyFilters()
+		end,
+	})
+
+	filters:AddButton({ Name = "Randomize Weapon", Callback = cfg.RandomizeSelected })
+	filters:AddButton({ Name = "Reset Weapon", Callback = cfg.ResetSelected })
+
+	local galleryTotal = 0
+
+	for _, weaponName in ipairs(weaponNames) do
+		galleryTotal += #byWeapon[weaponName]
+	end
+
+	local galleryBox = skinsSub:AddSection("Gallery", "Right", "layout-grid", tostring(galleryTotal) .. " skins")
+	local galleryRow = galleryBox:AddRow(cfg.GalleryHeight)
+
+	local grid = create("ScrollingFrame", {
+		Size = UDim2.new(1, -2, 1, 0),
+		Position = UDim2.fromOffset(1, 0),
+		BackgroundColor3 = T.Background,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 2,
+		ScrollBarImageColor3 = T.Accent,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		Parent = galleryRow,
+	}, {
+		corner(6),
+		stroke(T.Stroke, 1),
+		padding(5, 5, 5, 5),
+		create("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder }),
+	})
+
+	task.spawn(function()
+		local order = 0
+
+		for _, weaponName in ipairs(weaponNames) do
+			for _, skinEntry in ipairs(byWeapon[weaponName]) do
+				if not grid.Parent then
+					return
+				end
+
+				order += 1
+
+				local entry = { weapon = skinEntry.weapon, skin = skinEntry.skin, image = skinEntry.image }
+
+				buildCard(grid, entry, order)
+				table.insert(gallery.entries, entry)
+				entry.setSelected(selectedSkin(entry.weapon) == entry.skin)
+
+				if order % 12 == 0 then
+					task.wait()
+				end
+			end
+		end
+	end)
+
+	local actions = settingsSub:AddSection("Actions", "Left", "settings", "options")
+	actions:AddLabel("Pick a weapon and click a skin to equip it. Click it again to go back to your default.")
+	actions:AddToggle({
+		Name = "Unlock All Cosmetics",
+		Default = state.unlock,
+		Flag = "RivalsSkinUnlock",
+		Callback = function(value)
+			state.unlock = value
+		end,
+	})
+
+	local bulk = settingsSub:AddSection("Bulk", "Right", "shuffle", "all weapons")
+	bulk:AddButton({ Name = "Randomize All", Callback = cfg.RandomizeAll })
+	bulk:AddButton({ Name = "Reset All", Callback = cfg.ResetAll })
+
+	local skinFolder = window.ConfigFolder .. "/rivals_skins"
+
+	pcall(function()
+		if not isfolder(window.ConfigFolder) then
+			makefolder(window.ConfigFolder)
+		end
+
+		if not isfolder(skinFolder) then
+			makefolder(skinFolder)
+		end
+	end)
+
+	local function skinPath(name)
+		return skinFolder .. "/" .. name .. ".json"
+	end
+
+	local function scanSkinConfigs()
+		local out = {}
+		local ok, files = pcall(listfiles, skinFolder)
+
+		if ok and type(files) == "table" then
+			for _, file in ipairs(files) do
+				local name = string.match(file, "([^/\\]+)%.json$")
+
+				if name then
+					table.insert(out, name)
+				end
+			end
+		end
+
+		table.sort(out)
+
+		return out
+	end
+
+	local function exportSelection()
+		local result = {}
+
+		for weaponName in pairs(state.overrides) do
+			local skinName = selectedSkin(weaponName)
+
+			if skinName then
+				result[weaponName] = skinName
+			end
+		end
+
+		return result
+	end
+
+	local function importSelection(data)
+		resetAllSilent()
+
+		for weaponName, skinName in pairs(data) do
+			if type(weaponName) == "string" and type(skinName) == "string" and byWeapon[weaponName] then
+				setSkin(weaponName, skinName)
+			end
+		end
+
+		applyAll()
+		refreshSelection()
+	end
+
+	local selectedConfig = nil
+
+	local saved = configSub:AddSection("Skin Configs", "Left", "folder", "files")
+	local nameBox = saved:AddTextbox({ Name = "Config name", Placeholder = "Config name" })
+	local configList = saved:AddDropdown({
+		Name = "Saved configs",
+		Options = scanSkinConfigs(),
+		Callback = function(value)
+			selectedConfig = value
+		end,
+	})
+
+	local manage = configSub:AddSection("Manage", "Right", "settings", "actions")
+
+	manage:AddButton({
+		Name = "Save",
+		Callback = function()
+			local typed = string.gsub(nameBox:Get(), "[^%w%-_ ]", "")
+			local name = string.match(typed, "^%s*(.-)%s*$")
+
+			if name == "" then
+				name = selectedConfig
+			end
+
+			if type(name) ~= "string" or name == "" then
+				note("Enter a config name")
+				return
+			end
+
+			local ok = pcall(writefile, skinPath(name), HttpService:JSONEncode(exportSelection()))
+
+			if not ok then
+				note("File system unavailable")
+				return
+			end
+
+			configList:SetOptions(scanSkinConfigs())
+			configList:Set(name, true)
+			selectedConfig = name
+			nameBox:Set("", true)
+			note("Saved " .. name)
+		end,
+	})
+
+	manage:AddButton({
+		Name = "Load",
+		Callback = function()
+			if not selectedConfig then
+				note("Select a config first")
+				return
+			end
+
+			local ok, data = pcall(function()
+				return HttpService:JSONDecode(readfile(skinPath(selectedConfig)))
+			end)
+
+			if not ok or type(data) ~= "table" then
+				note("Failed to load " .. selectedConfig)
+				return
+			end
+
+			importSelection(data)
+			note("Loaded " .. selectedConfig)
+		end,
+	})
+
+	manage:AddButton({
+		Name = "Delete",
+		Callback = function()
+			if not selectedConfig then
+				note("Select a config first")
+				return
+			end
+
+			local target = selectedConfig
+
+			window:Confirm({
+				Title = "Delete config",
+				Content = "Delete " .. target .. "?",
+				Callback = function()
+					pcall(delfile, skinPath(target))
+					selectedConfig = nil
+					configList:SetOptions(scanSkinConfigs())
+					note("Deleted " .. target)
+				end,
+			})
+		end,
+	})
+
+	return cfg
 end
 
 function Window:Notify(opts)
