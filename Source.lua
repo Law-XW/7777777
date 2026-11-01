@@ -1382,6 +1382,30 @@ local function buildElements(window, container, tab, popup)
 			end,
 		})
 		api:AddButton({
+			Name = "Delete",
+			Callback = function()
+				if not selected then
+					note("Select a config first")
+					return
+				end
+				local target = selected
+				window:Confirm({
+					Title = "Delete config",
+					Content = "Delete " .. target .. "?",
+					Callback = function()
+						pcall(delfile, path(target))
+						if readAuto() == target then
+							pcall(delfile, autoPath)
+							renderAuto()
+						end
+						selected = nil
+						list:SetOptions(scan())
+						note("Deleted " .. target)
+					end,
+				})
+			end,
+		})
+		api:AddButton({
 			Name = "Set as Autoload",
 			Callback = function()
 				if not selected then
