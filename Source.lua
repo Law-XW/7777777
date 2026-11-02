@@ -1559,6 +1559,10 @@ function Tab:SelectSubTab(sub)
 		tween(other.Button, { BackgroundTransparency = on and 0.88 or 0.4, BackgroundColor3 = on and T.Accent or T.Element }, 0.2)
 		tween(getStroke(other.Button), { Color = on and T.Accent or T.Stroke, Transparency = on and 0.45 or 0 }, 0.2)
 		tween(other.Label, { TextColor3 = on and T.Text or T.SubText }, 0.15)
+		tween(other.Indicator, { Size = UDim2.new(on and 0.9 or 0, 0, 0, 2) }, 0.3, Quint)
+		tween(other.Glow, { Size = UDim2.new(on and 0.9 or 0, 0, 0, 7) }, 0.3, Quint)
+		other.Indicator.BackgroundColor3 = T.Accent
+		other.Glow.BackgroundColor3 = T.Accent
 		if other.Icon then
 			tween(other.Icon, { ImageColor3 = on and T.Accent or T.SubText }, 0.15)
 		end
@@ -1611,6 +1615,14 @@ function Tab:AddSubTab(name, iconName)
 	}, {
 		corner(7),
 		stroke(T.Stroke, 1),
+	})
+	sub.Content = create("Frame", {
+		Size = UDim2.new(0, 0, 1, 0),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Parent = sub.Button,
+	}, {
 		padding(11, 0, 11, 0),
 		create("UIListLayout", {
 			FillDirection = Enum.FillDirection.Horizontal,
@@ -1619,8 +1631,30 @@ function Tab:AddSubTab(name, iconName)
 			VerticalAlignment = Enum.VerticalAlignment.Center,
 		}),
 	})
+	local fade = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.5, 0),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	sub.Glow = create("Frame", {
+		Size = UDim2.new(0, 0, 0, 7),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 1, -2),
+		BackgroundColor3 = T.Accent,
+		BackgroundTransparency = 0.65,
+		BorderSizePixel = 0,
+		Parent = sub.Button,
+	}, { corner(4), create("UIGradient", { Transparency = fade }) })
+	sub.Indicator = create("Frame", {
+		Size = UDim2.new(0, 0, 0, 2),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 1, -2),
+		BackgroundColor3 = T.Accent,
+		BorderSizePixel = 0,
+		Parent = sub.Button,
+	}, { corner(1), create("UIGradient", { Transparency = fade }) })
 	if iconName then
-		sub.Icon = icon(sub.Button, iconName, 14, T.SubText)
+		sub.Icon = icon(sub.Content, iconName, 14, T.SubText)
 		sub.Icon.LayoutOrder = 1
 	end
 	sub.Label = label({
@@ -1629,7 +1663,7 @@ function Tab:AddSubTab(name, iconName)
 		Size = UDim2.new(0, 0, 0, 14),
 		AutomaticSize = Enum.AutomaticSize.X,
 		LayoutOrder = 2,
-		Parent = sub.Button,
+		Parent = sub.Content,
 	})
 	sub.Button.MouseEnter:Connect(function()
 		if parent.ActiveSub ~= sub then
