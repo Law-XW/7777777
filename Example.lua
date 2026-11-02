@@ -195,8 +195,6 @@ VisualsColors:AddColorPicker({
 	Flag = "EspBoxColor",
 })
 
-Window:AddRivalsSkinChanger()
-
 Window:AddEspManager()
 
 Window:AddSettingsManager()
