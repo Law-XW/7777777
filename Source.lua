@@ -299,6 +299,60 @@ local function decode(value)
 	return value
 end
 
+local Base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+local function toBase64(data)
+	local out = {}
+	for i = 1, #data, 3 do
+		local a, b, c = string.byte(data, i, i + 2)
+		local n = a * 65536 + (b or 0) * 256 + (c or 0)
+		local c1 = math.floor(n / 262144) % 64
+		local c2 = math.floor(n / 4096) % 64
+		local c3 = math.floor(n / 64) % 64
+		local c4 = n % 64
+		out[#out + 1] = string.sub(Base64Chars, c1 + 1, c1 + 1)
+			.. string.sub(Base64Chars, c2 + 1, c2 + 1)
+			.. (b and string.sub(Base64Chars, c3 + 1, c3 + 1) or "=")
+			.. (c and string.sub(Base64Chars, c4 + 1, c4 + 1) or "=")
+	end
+	return table.concat(out)
+end
+
+local function fromBase64(text)
+	text = string.gsub(text, "[^%w%+/=]", "")
+	local out = {}
+	for i = 1, #text, 4 do
+		local chunk = string.sub(text, i, i + 3)
+		if #chunk < 4 then
+			return nil
+		end
+		local n = 0
+		local pad = 0
+		for j = 1, 4 do
+			local ch = string.sub(chunk, j, j)
+			if ch == "=" then
+				pad = pad + 1
+				n = n * 64
+			else
+				local index = string.find(Base64Chars, ch, 1, true)
+				if not index then
+					return nil
+				end
+				n = n * 64 + (index - 1)
+			end
+		end
+		local piece = string.char(math.floor(n / 65536) % 256)
+		if pad < 2 then
+			piece = piece .. string.char(math.floor(n / 256) % 256)
+		end
+		if pad < 1 then
+			piece = piece .. string.char(n % 256)
+		end
+		out[#out + 1] = piece
+	end
+	return table.concat(out)
+end
+
 local function accentGradient()
 	return ColorSequence.new(T.Accent, T.Accent:Lerp(Color3.new(1, 1, 1), 0.3))
 end
@@ -1262,11 +1316,16 @@ local function buildElements(window, container, tab, popup)
 			return HttpService:JSONEncode(data)
 		end
 
+		local applyTable
 		local function apply(json)
 			local ok, data = pcall(HttpService.JSONDecode, HttpService, json)
 			if not ok or type(data) ~= "table" then
 				return false
 			end
+			return applyTable(data)
+		end
+
+		applyTable = function(data)
 			for key, value in pairs(data) do
 				local obj = window.Flags[key]
 				if obj and not obj.Late then
@@ -1431,6 +1490,104 @@ local function buildElements(window, container, tab, popup)
 		})
 		autoLabel = api:AddLabel("Autoload: none")
 		renderAuto()
+
+		local codeBox = api:AddTextbox({ Name = "Import code", Placeholder = "Paste config code" })
+
+		api:AddButton({
+			Name = "Export Config",
+			Callback = function()
+				local code = "ZERO1:" .. toBase64(dump())
+				local copy = setclipboard or toclipboard
+				local copied = false
+				if copy then
+					copied = pcall(copy, code)
+				end
+				if copied then
+					note("Config copied to clipboard")
+				else
+					codeBox:Set(code, true)
+					note("Clipboard unavailable, code placed in the import box")
+				end
+			end,
+		})
+
+		api:AddButton({
+			Name = "Import Config",
+			Callback = function()
+				local text = string.match(codeBox:Get(), "^%s*(.-)%s*$")
+				if text == "" then
+					note("Paste a config code first")
+					return
+				end
+				local body = string.match(text, "^ZERO1:(.+)$")
+				local json = body and fromBase64(body)
+				local ok, data = false, nil
+				if json then
+					ok, data = pcall(HttpService.JSONDecode, HttpService, json)
+				end
+				if not ok or type(data) ~= "table" then
+					note("Invalid config code")
+					return
+				end
+				local count = 0
+				for key in pairs(data) do
+					if window.Flags[key] then
+						count = count + 1
+					end
+				end
+				if count == 0 then
+					note("Config code has no matching settings")
+					return
+				end
+				window:Menu({
+					Title = "Import Config",
+					Content = "Found " .. count .. " settings. Save stores it in your configs and applies it. Use Once applies it without saving.",
+					Input = { Placeholder = "Config name (for Save)" },
+					Buttons = {
+						{
+							Text = "Save",
+							Primary = true,
+							Callback = function(value, setError)
+								local name = string.gsub(value, "[^%w%-_ ]", "")
+								name = string.match(name, "^%s*(.-)%s*$")
+								if name == "" then
+									setError("Enter a config name")
+									return false
+								end
+								local exists = false
+								pcall(function()
+									exists = isfile(path(name))
+								end)
+								if exists then
+									setError(name .. " already exists")
+									return false
+								end
+								local written = pcall(writefile, path(name), json)
+								if not written then
+									setError("File system unavailable")
+									return false
+								end
+								list:SetOptions(scan())
+								list:Set(name, true)
+								selected = name
+								applyTable(data)
+								codeBox:Set("", true)
+								note("Saved and applied " .. name)
+							end,
+						},
+						{
+							Text = "Use Once",
+							Callback = function()
+								applyTable(data)
+								codeBox:Set("", true)
+								note("Config applied")
+							end,
+						},
+						{ Text = "Cancel" },
+					},
+				})
+			end,
+		})
 
 		local auto = readAuto()
 		if auto then
@@ -4108,6 +4265,162 @@ function Window:Confirm(opts)
 	confirm.MouseButton1Click:Connect(function()
 		dismiss(opts.Callback)
 	end)
+end
+
+function Window:Menu(opts)
+	opts = opts or {}
+	local overlay = create("TextButton", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Text = "",
+		AutoButtonColor = false,
+		ZIndex = 120,
+		NoTheme = true,
+		Parent = self.Gui,
+	})
+	local card = create("Frame", {
+		Size = UDim2.new(0, 280, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		BackgroundColor3 = T.Section,
+		BorderSizePixel = 0,
+		Active = true,
+		Parent = overlay,
+	}, {
+		corner(10),
+		stroke(T.Stroke, 1),
+		padding(14, 12, 14, 14),
+		create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
+		create("UIScale", { Scale = 0.9 }),
+	})
+	local scale = card:FindFirstChildOfClass("UIScale")
+	tween(overlay, { BackgroundTransparency = 0.5 }, 0.2)
+	tween(scale, { Scale = 1 }, 0.3, Back)
+	label({
+		Text = opts.Title or "Menu",
+		Font = Zero.FontBold,
+		TextSize = 13,
+		Size = UDim2.new(1, 0, 0, 16),
+		LayoutOrder = 1,
+		Parent = card,
+	})
+	if opts.Content then
+		label({
+			Text = opts.Content,
+			TextColor3 = T.SubText,
+			TextWrapped = true,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			Size = UDim2.new(1, 0, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			LayoutOrder = 2,
+			Parent = card,
+		})
+	end
+	local input = nil
+	if opts.Input then
+		local holder = create("Frame", {
+			Size = UDim2.new(1, 0, 0, 26),
+			BackgroundColor3 = T.Background,
+			BorderSizePixel = 0,
+			LayoutOrder = 3,
+			Parent = card,
+		}, { corner(6), stroke(T.Stroke, 1) })
+		local ring = getStroke(holder)
+		input = create("TextBox", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Text = opts.Input.Default or "",
+			PlaceholderText = opts.Input.Placeholder or "",
+			PlaceholderColor3 = T.SubText,
+			TextColor3 = T.Text,
+			Font = Zero.FontMedium,
+			TextSize = 12,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ClearTextOnFocus = false,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			Parent = holder,
+		}, { padding(9, 0, 9, 0) })
+		input.Focused:Connect(function()
+			tween(ring, { Color = T.Accent }, 0.15)
+		end)
+		input.FocusLost:Connect(function()
+			tween(ring, { Color = T.Stroke }, 0.15)
+		end)
+	end
+	local errorLabel = label({
+		Text = "",
+		TextColor3 = T.Danger,
+		TextWrapped = true,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Size = UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		Visible = false,
+		LayoutOrder = 4,
+		Parent = card,
+	})
+	local function setError(text)
+		errorLabel.Text = tostring(text or "")
+		errorLabel.Visible = text ~= nil and text ~= ""
+	end
+	local buttons = create("Frame", {
+		Size = UDim2.new(1, 0, 0, 28),
+		BackgroundTransparency = 1,
+		LayoutOrder = 5,
+		Parent = card,
+	}, {
+		create("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			Padding = UDim.new(0, 8),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+	})
+	local function dismiss()
+		tween(overlay, { BackgroundTransparency = 1 }, 0.15)
+		tween(scale, { Scale = 0.92 }, 0.15)
+		task.delay(0.16, function()
+			overlay:Destroy()
+		end)
+	end
+	local specs = opts.Buttons or { { Text = "Close" } }
+	local count = #specs
+	for index, spec in ipairs(specs) do
+		local primary = spec.Primary == true
+		local btn = create("TextButton", {
+			Size = UDim2.new(1 / count, -(8 * (count - 1)) / count, 1, 0),
+			BackgroundColor3 = primary and T.Accent or T.Element,
+			BorderSizePixel = 0,
+			Text = spec.Text or "Button",
+			Font = Zero.FontMedium,
+			TextSize = 12,
+			TextColor3 = primary and T.Background or T.Text,
+			AutoButtonColor = false,
+			LayoutOrder = index,
+			Parent = buttons,
+		}, { corner(6), stroke(T.Stroke, 1) })
+		if not primary then
+			btn.MouseEnter:Connect(function()
+				tween(btn, { BackgroundColor3 = T.ElementHover }, 0.12)
+			end)
+			btn.MouseLeave:Connect(function()
+				tween(btn, { BackgroundColor3 = T.Element }, 0.15)
+			end)
+		end
+		btn.MouseButton1Click:Connect(function()
+			setError(nil)
+			local keepOpen = false
+			if type(spec.Callback) == "function" then
+				local ok, result = pcall(spec.Callback, input and input.Text or "", setError)
+				keepOpen = ok and result == false
+			end
+			if not keepOpen then
+				dismiss()
+			end
+		end)
+	end
 end
 
 function Window:CreatePopup(width, title)
