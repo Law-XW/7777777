@@ -1827,6 +1827,711 @@ function Window:AddSettingsManager(opts)
 	return tab
 end
 
+local EspFontUrl = "https://github.com/bluescan/proggyfonts/raw/master/ProggyOriginal/ProggyClean.ttf"
+local EspBlack = Color3.new(0, 0, 0)
+local EspHealthLow = Color3.fromRGB(255, 50, 50)
+local EspHealthHigh = Color3.fromRGB(90, 255, 90)
+local EspTopOffset = Vector3.new(0, 2.7, 0)
+local EspBottomOffset = Vector3.new(0, 3.1, 0)
+local EspPreviewHeight = 290
+local EspFont = nil
+
+local function loadEspFont()
+	if EspFont then
+		return EspFont
+	end
+	local ok, result = pcall(function()
+		if not (writefile and isfile and getcustomasset) then
+			error("unsupported")
+		end
+		if not isfile("ProggyClean.ttf") then
+			local data = game:HttpGet(EspFontUrl)
+			if #data < 1000 then
+				error("invalid font")
+			end
+			writefile("ProggyClean.ttf", data)
+		end
+		writefile("ProggyFont.json", HttpService:JSONEncode({
+			name = "Proggy",
+			faces = {
+				{
+					name = "Regular",
+					weight = 400,
+					style = "normal",
+					assetId = getcustomasset("ProggyClean.ttf"),
+				},
+			},
+		}))
+		return Font.new(getcustomasset("ProggyFont.json"))
+	end)
+	if ok and result then
+		EspFont = result
+	else
+		EspFont = Font.fromEnum(Enum.Font.Code)
+	end
+	return EspFont
+end
+
+local function espSetVisible(inst, value)
+	if inst.Visible ~= value then
+		inst.Visible = value
+	end
+end
+
+local function espSetText(inst, text)
+	if inst.Text ~= text then
+		inst.Text = text
+	end
+end
+
+local function espFrame(parent)
+	local frame = Instance.new("Frame")
+	frame.BackgroundTransparency = 1
+	frame.BorderSizePixel = 0
+	frame.Visible = false
+	frame.Parent = parent
+	return frame
+end
+
+local function espStroke(frame, color)
+	local line = Instance.new("UIStroke")
+	line.Color = color
+	line.Thickness = 1
+	line.LineJoinMode = Enum.LineJoinMode.Miter
+	line.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	line.Parent = frame
+	return line
+end
+
+local function espLabel(parent, width, anchor, alignment)
+	local text = Instance.new("TextLabel")
+	text.BackgroundTransparency = 1
+	text.BorderSizePixel = 0
+	text.FontFace = loadEspFont()
+	text.TextSize = 13
+	text.TextStrokeColor3 = EspBlack
+	text.TextStrokeTransparency = 0
+	text.TextXAlignment = alignment or Enum.TextXAlignment.Center
+	text.TextYAlignment = Enum.TextYAlignment.Center
+	text.Size = UDim2.fromOffset(width or 200, 14)
+	text.AnchorPoint = anchor or Vector2.new(0.5, 0.5)
+	text.Text = ""
+	text.Visible = false
+	text.Parent = parent
+	return text
+end
+
+local function createEspObject(parent)
+	local holder = Instance.new("Folder")
+	holder.Name = "EspObject"
+	holder.Parent = parent
+
+	local obj = { Holder = holder, Hidden = true, Frame = 0, Data = {} }
+
+	obj.Fill = espFrame(holder)
+	local gradient = Instance.new("UIGradient")
+	gradient.Rotation = 90
+	gradient.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(1, 0.85),
+	})
+	gradient.Parent = obj.Fill
+
+	obj.Outer = espFrame(holder)
+	espStroke(obj.Outer, EspBlack)
+
+	obj.Main = espFrame(holder)
+	obj.MainStroke = espStroke(obj.Main, Color3.new(1, 1, 1))
+
+	obj.Inner = espFrame(holder)
+	espStroke(obj.Inner, EspBlack)
+
+	obj.HealthBack = espFrame(holder)
+	obj.HealthBack.BackgroundColor3 = EspBlack
+	obj.HealthBack.BackgroundTransparency = 0.2
+
+	obj.HealthFill = espFrame(holder)
+	obj.HealthFill.BackgroundTransparency = 0
+	obj.HealthFill.AnchorPoint = Vector2.new(0, 1)
+
+	obj.Tracer = espFrame(holder)
+	obj.Tracer.AnchorPoint = Vector2.new(0.5, 0.5)
+	obj.Tracer.BackgroundTransparency = 0
+
+	obj.HealthText = espLabel(holder, 30, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+	obj.Name = espLabel(holder)
+	obj.Info = espLabel(holder)
+	obj.ToolLabel = espLabel(holder)
+	obj.Labels = { obj.HealthText, obj.Name, obj.Info, obj.ToolLabel }
+
+	return obj
+end
+
+local function hideEspObject(obj)
+	if obj.Hidden then
+		return
+	end
+	obj.Hidden = true
+	obj.Outer.Visible = false
+	obj.Main.Visible = false
+	obj.Inner.Visible = false
+	obj.Fill.Visible = false
+	obj.HealthBack.Visible = false
+	obj.HealthFill.Visible = false
+	obj.HealthText.Visible = false
+	obj.Tracer.Visible = false
+	obj.Name.Visible = false
+	obj.Info.Visible = false
+	obj.ToolLabel.Visible = false
+end
+
+local function applyEspObject(obj, cfg, d)
+	obj.Hidden = false
+
+	local left, top, w, h, centerX = d.Left, d.Top, d.W, d.H, d.CenterX
+	local innerW = math.max(w - 2, 0)
+	local innerH = math.max(h - 2, 0)
+
+	for _, text in ipairs(obj.Labels) do
+		if text.TextSize ~= cfg.TextSize then
+			text.TextSize = cfg.TextSize
+		end
+	end
+
+	local showBox = cfg.Box
+	espSetVisible(obj.Outer, showBox)
+	espSetVisible(obj.Main, showBox)
+	espSetVisible(obj.Inner, showBox)
+	if showBox then
+		obj.Outer.Position = UDim2.fromOffset(left - 1, top - 1)
+		obj.Outer.Size = UDim2.fromOffset(w + 2, h + 2)
+		obj.Main.Position = UDim2.fromOffset(left, top)
+		obj.Main.Size = UDim2.fromOffset(w, h)
+		obj.MainStroke.Color = cfg.BoxColor
+		obj.Inner.Position = UDim2.fromOffset(left + 1, top + 1)
+		obj.Inner.Size = UDim2.fromOffset(innerW, innerH)
+	end
+
+	local showFill = showBox and cfg.Fill
+	espSetVisible(obj.Fill, showFill)
+	if showFill then
+		obj.Fill.Position = UDim2.fromOffset(left + 1, top + 1)
+		obj.Fill.Size = UDim2.fromOffset(innerW, innerH)
+		obj.Fill.BackgroundColor3 = cfg.FillColor
+		obj.Fill.BackgroundTransparency = cfg.FillTransparency
+	end
+
+	local ratio = math.clamp(d.Ratio, 0, 1)
+	local healthColor = EspHealthLow:Lerp(EspHealthHigh, ratio)
+	local fillHeight = math.max(math.floor(h * ratio), 1)
+
+	local showHealth = cfg.Health
+	espSetVisible(obj.HealthBack, showHealth)
+	espSetVisible(obj.HealthFill, showHealth)
+	if showHealth then
+		obj.HealthBack.Position = UDim2.fromOffset(left - 6, top - 1)
+		obj.HealthBack.Size = UDim2.fromOffset(4, h + 2)
+		obj.HealthFill.Position = UDim2.fromOffset(left - 5, top + h)
+		obj.HealthFill.Size = UDim2.fromOffset(2, fillHeight)
+		obj.HealthFill.BackgroundColor3 = healthColor
+	end
+
+	local showHealthText = showHealth and ratio < 1
+	espSetVisible(obj.HealthText, showHealthText)
+	if showHealthText then
+		espSetText(obj.HealthText, tostring(math.floor(d.Health)))
+		obj.HealthText.TextColor3 = healthColor
+		obj.HealthText.Position = UDim2.fromOffset(left - 8, top + h - fillHeight)
+	end
+
+	espSetVisible(obj.Name, cfg.Name)
+	if cfg.Name then
+		espSetText(obj.Name, d.Name)
+		obj.Name.TextColor3 = cfg.NameColor
+		obj.Name.Position = UDim2.fromOffset(centerX, top - 9)
+	end
+
+	local offsetY = top + h + 8
+
+	espSetVisible(obj.Info, cfg.Distance)
+	if cfg.Distance then
+		espSetText(obj.Info, d.Distance .. "m")
+		obj.Info.TextColor3 = cfg.DistanceColor
+		obj.Info.Position = UDim2.fromOffset(centerX, offsetY)
+		offsetY = offsetY + 11
+	end
+
+	local showTool = cfg.Tool and d.Tool ~= nil
+	espSetVisible(obj.ToolLabel, showTool)
+	if showTool then
+		espSetText(obj.ToolLabel, d.Tool)
+		obj.ToolLabel.TextColor3 = cfg.ToolColor
+		obj.ToolLabel.Position = UDim2.fromOffset(centerX, offsetY)
+	end
+
+	espSetVisible(obj.Tracer, cfg.Tracer)
+	if cfg.Tracer then
+		local fromX = d.ViewW / 2
+		local fromY = d.ViewH
+		if cfg.TracerOrigin == "Center" then
+			fromY = d.ViewH / 2
+		elseif cfg.TracerOrigin == "Top" then
+			fromY = 0
+		end
+		local toY = top + h
+		local dx = centerX - fromX
+		local dy = toY - fromY
+		obj.Tracer.Position = UDim2.fromOffset(fromX + dx / 2, fromY + dy / 2)
+		obj.Tracer.Size = UDim2.fromOffset(math.sqrt(dx * dx + dy * dy), 1)
+		obj.Tracer.Rotation = math.deg(math.atan2(dy, dx))
+		obj.Tracer.BackgroundColor3 = cfg.TracerColor
+	end
+end
+
+local function espFlag(window, name, default)
+	local obj = window.Flags[name]
+	if obj then
+		local ok, value = pcall(obj.Get, obj)
+		if ok and value ~= nil then
+			return value
+		end
+	end
+	return default
+end
+
+local function readEspConfig(window, cfg)
+	cfg.Enabled = espFlag(window, "ZeroEspEnabled", false)
+	cfg.TeamCheck = espFlag(window, "ZeroEspTeamCheck", false)
+	cfg.MaxDistance = espFlag(window, "ZeroEspMaxDistance", 2000)
+	cfg.Box = espFlag(window, "ZeroEspBox", true)
+	cfg.BoxColor = espFlag(window, "ZeroEspBoxColor", Color3.fromRGB(255, 255, 255))
+	cfg.Fill = espFlag(window, "ZeroEspFill", true)
+	cfg.FillColor = espFlag(window, "ZeroEspFillColor", Color3.fromRGB(120, 140, 255))
+	cfg.FillTransparency = espFlag(window, "ZeroEspFillTransparency", 45) / 100
+	cfg.Name = espFlag(window, "ZeroEspName", true)
+	cfg.NameColor = espFlag(window, "ZeroEspNameColor", Color3.fromRGB(255, 255, 255))
+	cfg.Health = espFlag(window, "ZeroEspHealth", true)
+	cfg.Distance = espFlag(window, "ZeroEspDistanceText", true)
+	cfg.DistanceColor = espFlag(window, "ZeroEspDistanceColor", Color3.fromRGB(200, 200, 200))
+	cfg.Tool = espFlag(window, "ZeroEspTool", true)
+	cfg.ToolColor = espFlag(window, "ZeroEspToolColor", Color3.fromRGB(200, 200, 200))
+	cfg.Tracer = espFlag(window, "ZeroEspTracer", false)
+	cfg.TracerColor = espFlag(window, "ZeroEspTracerColor", Color3.fromRGB(255, 255, 255))
+	cfg.TracerOrigin = espFlag(window, "ZeroEspTracerOrigin", "Bottom")
+	cfg.TextSize = espFlag(window, "ZeroEspTextSize", 13)
+end
+
+local function updateEspPlayer(player, obj, cfg, camera, cameraPosition, viewSize)
+	if cfg.TeamCheck and player.Team ~= nil and player.Team == Players.LocalPlayer.Team then
+		hideEspObject(obj)
+		return
+	end
+
+	local character = player.Character
+	if character ~= obj.Character then
+		obj.Character = character
+		obj.Humanoid = nil
+		obj.Root = nil
+		obj.Tool = nil
+	end
+
+	local humanoid = obj.Humanoid
+	local root = obj.Root
+	if character then
+		if not humanoid or not humanoid.Parent then
+			humanoid = character:FindFirstChildOfClass("Humanoid")
+			obj.Humanoid = humanoid
+		end
+		if not root or not root.Parent then
+			root = character:FindFirstChild("HumanoidRootPart")
+			obj.Root = root
+		end
+	end
+
+	if not humanoid or not root or humanoid.Health <= 0 then
+		hideEspObject(obj)
+		return
+	end
+
+	local rootPosition = root.Position
+	local distance = (cameraPosition - rootPosition).Magnitude
+	if distance > cfg.MaxDistance then
+		hideEspObject(obj)
+		return
+	end
+
+	local topPos, topVisible = camera:WorldToViewportPoint(rootPosition + EspTopOffset)
+	if not topVisible or topPos.Z <= 0 then
+		hideEspObject(obj)
+		return
+	end
+	local bottomPos = camera:WorldToViewportPoint(rootPosition - EspBottomOffset)
+
+	obj.Frame = obj.Frame + 1
+	if obj.Frame % 8 == 0 then
+		obj.Tool = character:FindFirstChildOfClass("Tool")
+	end
+
+	local height = math.abs(bottomPos.Y - topPos.Y)
+	local d = obj.Data
+	d.H = math.floor(height)
+	d.W = math.floor(height * 0.56)
+	d.CenterX = topPos.X
+	d.Left = math.floor(topPos.X - d.W / 2)
+	d.Top = math.floor(topPos.Y)
+	d.Ratio = humanoid.Health / math.max(humanoid.MaxHealth, 1)
+	d.Health = humanoid.Health
+	d.Name = player.DisplayName
+	d.Distance = math.floor(distance)
+	d.Tool = obj.Tool and obj.Tool.Parent == character and obj.Tool.Name or nil
+	d.ViewW = viewSize.X
+	d.ViewH = viewSize.Y
+
+	applyEspObject(obj, cfg, d)
+end
+
+local function buildEspDummy()
+	local model = Instance.new("Model")
+	model.Name = "PreviewDummy"
+	local function part(name, size, offset, color, transparency)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.CFrame = CFrame.new(offset)
+		p.Color = color
+		p.Transparency = transparency or 0
+		p.Material = Enum.Material.SmoothPlastic
+		p.Anchored = true
+		p.CanCollide = false
+		p.Parent = model
+		return p
+	end
+	local skin = Color3.fromRGB(226, 190, 160)
+	local shirt = Color3.fromRGB(60, 90, 160)
+	local pants = Color3.fromRGB(40, 45, 55)
+	local root = part("HumanoidRootPart", Vector3.new(2, 2, 1), Vector3.new(0, 0, 0), shirt, 1)
+	part("Torso", Vector3.new(2, 2, 1), Vector3.new(0, 0, 0), shirt)
+	part("Head", Vector3.new(1.2, 1.2, 1.2), Vector3.new(0, 1.6, 0), skin)
+	part("LeftArm", Vector3.new(1, 2, 1), Vector3.new(-1.5, 0, 0), skin)
+	part("RightArm", Vector3.new(1, 2, 1), Vector3.new(1.5, 0, 0), skin)
+	part("LeftLeg", Vector3.new(1, 2, 1), Vector3.new(-0.5, -2, 0), pants)
+	part("RightLeg", Vector3.new(1, 2, 1), Vector3.new(0.5, -2, 0), pants)
+	model.PrimaryPart = root
+	return model
+end
+
+local function buildEspPreviewModel(parent)
+	local model = nil
+	local character = Players.LocalPlayer.Character
+	if character then
+		local archivable = character.Archivable
+		character.Archivable = true
+		local ok, clone = pcall(function()
+			return character:Clone()
+		end)
+		character.Archivable = archivable
+		if ok and clone then
+			model = clone
+		end
+	end
+	if not model or not (model.PrimaryPart or model:FindFirstChild("HumanoidRootPart")) then
+		if model then
+			model:Destroy()
+		end
+		model = buildEspDummy()
+	end
+	if not model.PrimaryPart then
+		model.PrimaryPart = model:FindFirstChild("HumanoidRootPart")
+	end
+	for _, item in ipairs(model:GetDescendants()) do
+		if item:IsA("BaseScript") or item:IsA("Sound") or item:IsA("ForceField") or item:IsA("BillboardGui") or item:IsA("SurfaceGui") then
+			item:Destroy()
+		elseif item:IsA("BasePart") then
+			item.Anchored = true
+			item.CanCollide = false
+		elseif item:IsA("Humanoid") then
+			item.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+			item.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+		end
+	end
+	model.Parent = parent
+	return model
+end
+
+local function projectEspPoint(camera, point, width, height)
+	local rel = camera.CFrame:PointToObjectSpace(point)
+	local depth = math.max(-rel.Z, 0.001)
+	local tanHalf = math.tan(math.rad(camera.FieldOfView) / 2)
+	local x = (0.5 + (rel.X / depth) / (2 * tanHalf * (width / height))) * width
+	local y = (0.5 - (rel.Y / depth) / (2 * tanHalf)) * height
+	return x, y
+end
+
+function Window:AddEspManager(opts)
+	opts = opts or {}
+	local window = self
+	window.Cleanups = window.Cleanups or {}
+
+	loadEspFont()
+
+	local tab = self:AddTab(opts.Name or "ESP", opts.Icon or "eye")
+
+	local general = tab:AddSection("General", "Left", "eye", "esp")
+	general:AddToggle({ Name = "Enable ESP", Default = false, Flag = "ZeroEspEnabled" })
+	general:AddToggle({ Name = "Team Check", Default = false, Flag = "ZeroEspTeamCheck" })
+	general:AddSlider({
+		Name = "Max Distance",
+		Min = 100,
+		Max = 5000,
+		Default = 2000,
+		Increment = 50,
+		Suffix = " st",
+		Flag = "ZeroEspMaxDistance",
+	})
+
+	local elements = tab:AddSection("Elements", "Left", "layers", "visuals")
+	elements:AddToggle({
+		Name = "Box",
+		Default = true,
+		Flag = "ZeroEspBox",
+		Color = Color3.fromRGB(255, 255, 255),
+		ColorFlag = "ZeroEspBoxColor",
+	})
+	elements:AddToggle({
+		Name = "Box Fill",
+		Default = true,
+		Flag = "ZeroEspFill",
+		Color = Color3.fromRGB(120, 140, 255),
+		ColorFlag = "ZeroEspFillColor",
+	})
+	elements:AddToggle({
+		Name = "Name",
+		Default = true,
+		Flag = "ZeroEspName",
+		Color = Color3.fromRGB(255, 255, 255),
+		ColorFlag = "ZeroEspNameColor",
+	})
+	elements:AddToggle({ Name = "Health Bar", Default = true, Flag = "ZeroEspHealth" })
+	elements:AddToggle({
+		Name = "Distance",
+		Default = true,
+		Flag = "ZeroEspDistanceText",
+		Color = Color3.fromRGB(200, 200, 200),
+		ColorFlag = "ZeroEspDistanceColor",
+	})
+	elements:AddToggle({
+		Name = "Held Tool",
+		Default = true,
+		Flag = "ZeroEspTool",
+		Color = Color3.fromRGB(200, 200, 200),
+		ColorFlag = "ZeroEspToolColor",
+	})
+	elements:AddToggle({
+		Name = "Tracer",
+		Default = false,
+		Flag = "ZeroEspTracer",
+		Color = Color3.fromRGB(255, 255, 255),
+		ColorFlag = "ZeroEspTracerColor",
+	})
+
+	local preview = tab:AddSection("Preview", "Right", "user", "live")
+	local row = preview:AddRow(EspPreviewHeight)
+
+	local style = tab:AddSection("Style", "Right", "sliders-horizontal", "visuals")
+	style:AddSlider({
+		Name = "Fill Transparency",
+		Min = 0,
+		Max = 100,
+		Default = 45,
+		Increment = 1,
+		Suffix = "%",
+		Flag = "ZeroEspFillTransparency",
+	})
+	style:AddSlider({
+		Name = "Text Size",
+		Min = 10,
+		Max = 18,
+		Default = 13,
+		Increment = 1,
+		Suffix = " px",
+		Flag = "ZeroEspTextSize",
+	})
+	style:AddDropdown({
+		Name = "Tracer Origin",
+		Options = { "Bottom", "Center", "Top" },
+		Default = "Bottom",
+		Flag = "ZeroEspTracerOrigin",
+	})
+
+	local cfg = {}
+	readEspConfig(window, cfg)
+
+	local holder = create("Frame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = T.Background,
+		BorderSizePixel = 0,
+		ClipsDescendants = true,
+		Parent = row,
+	}, { corner(8), stroke(T.Stroke, 1) })
+
+	local viewport = create("ViewportFrame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Ambient = Color3.fromRGB(170, 170, 180),
+		LightColor = Color3.fromRGB(255, 255, 255),
+		LightDirection = Vector3.new(-0.4, -0.7, -0.6),
+		NoTheme = true,
+		Parent = holder,
+	})
+
+	local previewCamera = Instance.new("Camera")
+	previewCamera.FieldOfView = 40
+	previewCamera.CFrame = CFrame.lookAt(Vector3.new(0, -0.2, 12), Vector3.new(0, -0.2, 0))
+	previewCamera.Parent = viewport
+	viewport.CurrentCamera = previewCamera
+
+	local overlay = create("Frame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ClipsDescendants = true,
+		ZIndex = 2,
+		NoTheme = true,
+		Parent = holder,
+	})
+	local previewObject = createEspObject(overlay)
+	local previewData = previewObject.Data
+
+	local model = buildEspPreviewModel(viewport)
+	local angle = 0
+
+	window:Bind(Players.LocalPlayer.CharacterAdded, function()
+		task.wait(1.5)
+		if not viewport.Parent then
+			return
+		end
+		if model then
+			model:Destroy()
+		end
+		model = buildEspPreviewModel(viewport)
+	end)
+
+	window:Bind(RunService.RenderStepped, function(dt)
+		if window.Active ~= tab or not window.Shown or not model or not model.Parent then
+			return
+		end
+		readEspConfig(window, cfg)
+		angle = angle + dt * 0.9
+		model:PivotTo(CFrame.Angles(0, angle, 0))
+
+		local scale = window.Scale and window.Scale.Scale or 1
+		if scale <= 0 then
+			scale = 1
+		end
+		local width = row.AbsoluteSize.X / scale
+		local height = row.AbsoluteSize.Y / scale
+		if width < 10 or height < 10 then
+			return
+		end
+
+		local origin = Vector3.zero
+		local topX, topY = projectEspPoint(previewCamera, origin + EspTopOffset, width, height)
+		local _, bottomY = projectEspPoint(previewCamera, origin - EspBottomOffset, width, height)
+		local boxHeight = math.abs(bottomY - topY)
+
+		previewData.H = math.floor(boxHeight)
+		previewData.W = math.floor(boxHeight * 0.56)
+		previewData.CenterX = topX
+		previewData.Left = math.floor(topX - previewData.W / 2)
+		previewData.Top = math.floor(topY)
+		previewData.Ratio = 0.78
+		previewData.Health = 78
+		previewData.Name = Players.LocalPlayer.DisplayName
+		previewData.Distance = 32
+		local tool = model:FindFirstChildOfClass("Tool")
+		previewData.Tool = tool and tool.Name or "Weapon"
+		previewData.ViewW = width
+		previewData.ViewH = height
+
+		applyEspObject(previewObject, cfg, previewData)
+	end)
+
+	local previousGui = getGuiParent():FindFirstChild("ZeroEspOverlay")
+	if previousGui then
+		previousGui:Destroy()
+	end
+
+	local espGui = Instance.new("ScreenGui")
+	espGui.Name = "ZeroEspOverlay"
+	espGui.ResetOnSpawn = false
+	espGui.IgnoreGuiInset = true
+	espGui.DisplayOrder = 998
+	espGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	espGui.Parent = getGuiParent()
+
+	local objects = {}
+
+	local function createFor(player)
+		if player == Players.LocalPlayer or objects[player] then
+			return
+		end
+		objects[player] = createEspObject(espGui)
+	end
+
+	local function removeFor(player)
+		local obj = objects[player]
+		if obj then
+			obj.Holder:Destroy()
+			objects[player] = nil
+		end
+	end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		createFor(player)
+	end
+
+	window:Bind(Players.PlayerAdded, createFor)
+	window:Bind(Players.PlayerRemoving, removeFor)
+
+	local bindName = "ZeroEspUpdate"
+	pcall(function()
+		RunService:UnbindFromRenderStep(bindName)
+	end)
+
+	local liveCfg = {}
+	RunService:BindToRenderStep(bindName, Enum.RenderPriority.Camera.Value + 1, function()
+		readEspConfig(window, liveCfg)
+		if not liveCfg.Enabled then
+			for _, obj in pairs(objects) do
+				hideEspObject(obj)
+			end
+			return
+		end
+		local camera = workspace.CurrentCamera
+		if not camera then
+			return
+		end
+		local cameraPosition = camera.CFrame.Position
+		local viewSize = camera.ViewportSize
+		for player, obj in pairs(objects) do
+			updateEspPlayer(player, obj, liveCfg, camera, cameraPosition, viewSize)
+		end
+	end)
+
+	table.insert(window.Cleanups, function()
+		pcall(function()
+			RunService:UnbindFromRenderStep(bindName)
+		end)
+		for player in pairs(objects) do
+			removeFor(player)
+		end
+		espGui:Destroy()
+	end)
+
+	return tab
+end
+
 local function rejoinServer()
 	local player = Players.LocalPlayer
 	if #Players:GetPlayers() <= 1 then
@@ -3896,6 +4601,10 @@ end
 
 function Window:Destroy()
 	self:ClosePicker()
+	for _, cleanup in ipairs(self.Cleanups or {}) do
+		pcall(cleanup)
+	end
+	self.Cleanups = {}
 	for _, connection in ipairs(self.Connections) do
 		connection:Disconnect()
 	end

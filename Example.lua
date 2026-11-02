@@ -197,4 +197,6 @@ VisualsColors:AddColorPicker({
 
 Window:AddRivalsSkinChanger()
 
+Window:AddEspManager()
+
 Window:AddSettingsManager()
