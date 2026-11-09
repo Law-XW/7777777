@@ -17,16 +17,16 @@ Window:AddHomeManager()
 
 local Tab = Window:AddTab("Example", "home")
 
-local Controls = Tab:AddSection("Example Controls", "Left", "sliders-horizontal", "controls")
-local Inputs = Tab:AddSection("Example Inputs", "Right", "list", "inputs")
+local Controls = Tab:AddSection("Controls", "Left", "sliders-horizontal", "controls")
+local Inputs = Tab:AddSection("Inputs", "Right", "list", "inputs")
 
-Controls:AddLabel("Example Label")
+Controls:AddLabel("Clean interface with a compact layout.")
 
 local Toggle = Controls:AddToggle({
 	Name = "Example Toggle",
 	Default = false,
 	Flag = "ExampleToggle",
-	Color = Color3.fromRGB(52, 168, 222),
+	Color = Color3.fromRGB(56, 176, 232),
 	ColorFlag = "ExampleToggleColor",
 	Callback = function(Value)
 		print("Example Toggle", Value)
@@ -38,7 +38,7 @@ local Toggle = Controls:AddToggle({
 
 local ToggleSettings = Toggle:AddSettings({ Title = "Example Settings" })
 ToggleSettings:AddSlider({
-	Name = "Example Strength",
+	Name = "Strength",
 	Min = 0,
 	Max = 100,
 	Default = 50,
@@ -47,13 +47,13 @@ ToggleSettings:AddSlider({
 	Flag = "ExampleStrength",
 })
 ToggleSettings:AddDropdown({
-	Name = "Example Style",
+	Name = "Style",
 	Options = { "Smooth", "Snappy", "Instant" },
 	Default = "Smooth",
 	Flag = "ExampleStyle",
 })
 ToggleSettings:AddToggle({
-	Name = "Example Visible Only",
+	Name = "Visible Only",
 	Default = true,
 	Flag = "ExampleVisibleOnly",
 })
@@ -68,18 +68,6 @@ Controls:AddSlider({
 	Flag = "ExampleSlider",
 	Callback = function(Value)
 		print("Example Slider", Value)
-	end,
-})
-
-Controls:AddKeybind({
-	Name = "Example Keybind",
-	Default = Enum.KeyCode.E,
-	Flag = "ExampleKeybind",
-	Callback = function(Key)
-		print("Example Keybind set to", Key and Key.Name or "None")
-	end,
-	Pressed = function()
-		Window:Notify({ Title = "Example", Content = "Keybind pressed", Duration = 2 })
 	end,
 })
 
@@ -172,7 +160,7 @@ AimbotFov:AddSlider({
 })
 AimbotFov:AddColorPicker({
 	Name = "Circle Color",
-	Default = Color3.fromRGB(52, 168, 222),
+	Default = Color3.fromRGB(56, 176, 232),
 	Flag = "AimbotCircleColor",
 })
 
