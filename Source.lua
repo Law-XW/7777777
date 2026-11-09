@@ -64,15 +64,15 @@ Zero.FontMedium = Enum.Font.Arial
 Zero.FontBold = Enum.Font.ArialBold
 
 Zero.Theme = {
-	Background = Color3.fromRGB(8, 10, 14),
-	Section = Color3.fromRGB(14, 18, 24),
-	Element = Color3.fromRGB(21, 27, 35),
-	ElementHover = Color3.fromRGB(30, 38, 49),
-	Track = Color3.fromRGB(40, 49, 62),
-	Accent = Color3.fromRGB(52, 168, 222),
+	Background = Color3.fromRGB(4, 7, 15),
+	Section = Color3.fromRGB(7, 11, 22),
+	Element = Color3.fromRGB(11, 17, 32),
+	ElementHover = Color3.fromRGB(16, 25, 45),
+	Track = Color3.fromRGB(26, 40, 68),
+	Accent = Color3.fromRGB(46, 120, 255),
 	Text = Color3.fromRGB(232, 236, 240),
-	SubText = Color3.fromRGB(128, 136, 148),
-	Stroke = Color3.fromRGB(30, 38, 49),
+	SubText = Color3.fromRGB(120, 134, 162),
+	Stroke = Color3.fromRGB(12, 19, 35),
 	Danger = Color3.fromRGB(214, 80, 92),
 }
 
@@ -1664,8 +1664,8 @@ function Tab:AddSection(name, side, iconName, tag)
 	}, {
 		corner(10),
 		stroke(T.Stroke, 1),
-		padding(11, 0, 11, 12),
-		create("UIListLayout", { Padding = UDim.new(0, 7), SortOrder = Enum.SortOrder.LayoutOrder }),
+		padding(12, 0, 12, 12),
+		create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
 
 	local header = create("Frame", {
@@ -1718,9 +1718,7 @@ function Tab:SelectSubTab(sub)
 		tween(getStroke(other.Button), { Color = on and T.Accent or T.Stroke, Transparency = on and 0.45 or 0 }, 0.2)
 		tween(other.Label, { TextColor3 = on and T.Text or T.SubText }, 0.15)
 		tween(other.Indicator, { Size = UDim2.new(on and 0.9 or 0, 0, 0, 2) }, 0.3, Quint)
-		tween(other.Glow, { Size = UDim2.new(on and 0.9 or 0, 0, 0, 7) }, 0.3, Quint)
 		other.Indicator.BackgroundColor3 = T.Accent
-		other.Glow.BackgroundColor3 = T.Accent
 		if other.Icon then
 			tween(other.Icon, { ImageColor3 = on and T.Accent or T.SubText }, 0.15)
 		end
@@ -1749,7 +1747,7 @@ function Tab:AddSubTab(name, iconName)
 			AutomaticCanvasSize = Enum.AutomaticSize.X,
 			Parent = parent.Page,
 		}, {
-			padding(4, 3, 4, 3),
+			padding(4, 4, 4, 4),
 			create("UIListLayout", {
 				FillDirection = Enum.FillDirection.Horizontal,
 				Padding = UDim.new(0, 6),
@@ -1795,15 +1793,6 @@ function Tab:AddSubTab(name, iconName)
 		NumberSequenceKeypoint.new(0.8, 0),
 		NumberSequenceKeypoint.new(1, 0.9),
 	})
-	sub.Glow = create("Frame", {
-		Size = UDim2.new(0, 0, 0, 7),
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 1, -2),
-		BackgroundColor3 = T.Accent,
-		BackgroundTransparency = 0.65,
-		BorderSizePixel = 0,
-		Parent = sub.Button,
-	}, { corner(4), create("UIGradient", { Transparency = fade }) })
 	sub.Indicator = create("Frame", {
 		Size = UDim2.new(0, 0, 0, 2),
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -1858,9 +1847,7 @@ function Window:SelectTab(tab)
 		tween(other.Button, { BackgroundTransparency = on and 0.92 or 1, BackgroundColor3 = on and T.Accent or T.Element }, 0.2)
 		tween(other.Label, { TextColor3 = on and T.Text or T.SubText }, 0.15)
 		tween(other.Indicator, { Size = UDim2.new(on and 0.9 or 0, 0, 0, 2) }, 0.3, Quint)
-		tween(other.Glow, { Size = UDim2.new(on and 0.9 or 0, 0, 0, 7) }, 0.3, Quint)
 		other.Indicator.BackgroundColor3 = T.Accent
-		other.Glow.BackgroundColor3 = T.Accent
 		if other.Icon then
 			tween(other.Icon, { ImageColor3 = on and T.Accent or T.SubText }, 0.15)
 		end
@@ -1913,15 +1900,6 @@ function Window:AddTab(name, iconName)
 		NumberSequenceKeypoint.new(0.8, 0),
 		NumberSequenceKeypoint.new(1, 0.9),
 	})
-	tab.Glow = create("Frame", {
-		Size = UDim2.new(0, 0, 0, 7),
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 1, -2),
-		BackgroundColor3 = T.Accent,
-		BackgroundTransparency = 0.65,
-		BorderSizePixel = 0,
-		Parent = tab.Button,
-	}, { corner(4), create("UIGradient", { Transparency = fade }) })
 	tab.Indicator = create("Frame", {
 		Size = UDim2.new(0, 0, 0, 2),
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -4192,7 +4170,7 @@ function Window:Confirm(opts)
 	}, {
 		corner(10),
 		stroke(T.Stroke, 1),
-		padding(14, 12, 14, 14),
+		padding(14, 14, 14, 14),
 		create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
 		create("UIScale", { Scale = 0.9 }),
 	})
@@ -4297,7 +4275,7 @@ function Window:Menu(opts)
 	}, {
 		corner(10),
 		stroke(T.Stroke, 1),
-		padding(14, 12, 14, 14),
+		padding(14, 14, 14, 14),
 		create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
 		create("UIScale", { Scale = 0.9 }),
 	})
@@ -4456,8 +4434,8 @@ function Window:CreatePopup(width, title)
 	}, {
 		corner(10),
 		stroke(T.Stroke, 1),
-		padding(10, 4, 10, 12),
-		create("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }),
+		padding(12, 6, 12, 12),
+		create("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
 	local head = create("Frame", {
 		Size = UDim2.new(1, 0, 0, 26),
@@ -5019,40 +4997,6 @@ function Zero:CreateWindow(opts)
 	})
 	window.Main = main
 	window.Scale = main:FindFirstChildOfClass("UIScale")
-	create("Frame", {
-		Name = "GlowTopLeft",
-		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = T.Accent,
-		BorderSizePixel = 0,
-		Parent = main,
-	}, {
-		create("UIGradient", {
-			Rotation = 45,
-			Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 0.75),
-				NumberSequenceKeypoint.new(0.1, 0.92),
-				NumberSequenceKeypoint.new(0.24, 1),
-				NumberSequenceKeypoint.new(1, 1),
-			}),
-		}),
-	})
-	create("Frame", {
-		Name = "GlowBottomLeft",
-		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = T.Accent,
-		BorderSizePixel = 0,
-		Parent = main,
-	}, {
-		create("UIGradient", {
-			Rotation = -45,
-			Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 0.8),
-				NumberSequenceKeypoint.new(0.09, 0.94),
-				NumberSequenceKeypoint.new(0.22, 1),
-				NumberSequenceKeypoint.new(1, 1),
-			}),
-		}),
-	})
 	local intro = opts.Intro ~= false
 	if not intro then
 		tween(window.Scale, { Scale = 1 }, 0.45, Back)
@@ -5098,12 +5042,11 @@ function Zero:CreateWindow(opts)
 	})
 	local logoBox = create("Frame", {
 		Size = UDim2.fromOffset(26, 26),
-		BackgroundColor3 = T.Element,
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		LayoutOrder = 1,
 		Parent = brand,
-	}, { corner(8), stroke(T.Accent, 1) })
-	getStroke(logoBox).Transparency = 0.55
+	})
 	local logo = icon(logoBox, window.LogoIcon, 20, T.Accent)
 	logo.AnchorPoint = Vector2.new(0.5, 0.5)
 	logo.Position = UDim2.fromScale(0.5, 0.5)
@@ -5479,28 +5422,26 @@ function Zero:CreateWindow(opts)
 		local duration = opts.IntroTime or 1.6
 		local card = create("CanvasGroup", {
 			Name = "Intro",
-			Size = UDim2.fromOffset(240, 132),
+			Size = UDim2.fromOffset(220, 124),
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
-			BackgroundColor3 = T.Section,
+			BackgroundColor3 = T.Background,
 			BorderSizePixel = 0,
 			GroupTransparency = 1,
 			ZIndex = 900,
 			Parent = gui,
 		}, {
 			corner(14),
-			stroke(T.Stroke, 1),
 			create("UIScale", { Scale = 0.85 }),
 		})
 		local introBox = create("Frame", {
 			Size = UDim2.fromOffset(44, 44),
 			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0, 16),
-			BackgroundColor3 = T.Element,
+			Position = UDim2.new(0.5, 0, 0, 18),
+			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
 			Parent = card,
-		}, { corner(12), stroke(T.Accent, 1) })
-		getStroke(introBox).Transparency = 0.45
+		})
 		local introLogo = icon(introBox, window.LogoIcon, 30, T.Accent)
 		introLogo.AnchorPoint = Vector2.new(0.5, 0.5)
 		introLogo.Position = UDim2.fromScale(0.5, 0.5)
@@ -5510,31 +5451,31 @@ function Zero:CreateWindow(opts)
 			TextSize = 15,
 			TextXAlignment = Enum.TextXAlignment.Center,
 			Size = UDim2.new(1, 0, 0, 18),
-			Position = UDim2.fromOffset(0, 68),
+			Position = UDim2.fromOffset(0, 70),
 			Parent = card,
 		})
-		local introText = label({
+		label({
 			Text = opts.IntroText or "Loading...",
 			TextSize = 11,
 			TextColor3 = T.SubText,
 			TextXAlignment = Enum.TextXAlignment.Center,
 			Size = UDim2.new(1, 0, 0, 14),
-			Position = UDim2.fromOffset(0, 88),
+			Position = UDim2.fromOffset(0, 90),
 			Parent = card,
 		})
 		local introTrack = create("Frame", {
-			Size = UDim2.new(1, -40, 0, 4),
-			Position = UDim2.new(0, 20, 1, -16),
+			Size = UDim2.new(1, -80, 0, 2),
+			Position = UDim2.new(0, 40, 1, -12),
 			BackgroundColor3 = T.Track,
 			BorderSizePixel = 0,
 			Parent = card,
-		}, { corner(2) })
+		}, { corner(1) })
 		local introFill = create("Frame", {
 			Size = UDim2.fromScale(0, 1),
 			BackgroundColor3 = T.Accent,
 			BorderSizePixel = 0,
 			Parent = introTrack,
-		}, { corner(2), create("UIGradient", { Color = accentGradient() }) })
+		}, { corner(1) })
 
 		local introScale = card:FindFirstChildOfClass("UIScale")
 		tween(card, { GroupTransparency = 0 }, 0.3)
@@ -5542,11 +5483,7 @@ function Zero:CreateWindow(opts)
 		tween(introFill, { Size = UDim2.fromScale(1, 1) }, duration, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 
 		task.spawn(function()
-			task.wait(duration * 0.6)
-			if introText.Parent then
-				introText.Text = "Almost ready..."
-			end
-			task.wait(duration * 0.4 + 0.15)
+			task.wait(duration + 0.15)
 			if not gui.Parent then
 				return
 			end
