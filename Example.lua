@@ -17,16 +17,16 @@ Window:AddHomeManager()
 
 local Tab = Window:AddTab("Example", "home")
 
-local Controls = Tab:AddSection("Controls", "Left", "sliders-horizontal", "controls")
-local Inputs = Tab:AddSection("Inputs", "Right", "list", "inputs")
+local Controls = Tab:AddSection("Example Controls", "Left", "sliders-horizontal", "controls")
+local Inputs = Tab:AddSection("Example Inputs", "Right", "list", "inputs")
 
-Controls:AddLabel("Clean interface with a compact layout.")
+Controls:AddLabel("Example Label")
 
 local Toggle = Controls:AddToggle({
 	Name = "Example Toggle",
 	Default = false,
 	Flag = "ExampleToggle",
-	Color = Color3.fromRGB(56, 176, 232),
+	Color = Color3.fromRGB(30, 160, 90),
 	ColorFlag = "ExampleToggleColor",
 	Callback = function(Value)
 		print("Example Toggle", Value)
@@ -38,7 +38,7 @@ local Toggle = Controls:AddToggle({
 
 local ToggleSettings = Toggle:AddSettings({ Title = "Example Settings" })
 ToggleSettings:AddSlider({
-	Name = "Strength",
+	Name = "Example Strength",
 	Min = 0,
 	Max = 100,
 	Default = 50,
@@ -47,13 +47,13 @@ ToggleSettings:AddSlider({
 	Flag = "ExampleStrength",
 })
 ToggleSettings:AddDropdown({
-	Name = "Style",
+	Name = "Example Style",
 	Options = { "Smooth", "Snappy", "Instant" },
 	Default = "Smooth",
 	Flag = "ExampleStyle",
 })
 ToggleSettings:AddToggle({
-	Name = "Visible Only",
+	Name = "Example Visible Only",
 	Default = true,
 	Flag = "ExampleVisibleOnly",
 })
@@ -160,7 +160,7 @@ AimbotFov:AddSlider({
 })
 AimbotFov:AddColorPicker({
 	Name = "Circle Color",
-	Default = Color3.fromRGB(56, 176, 232),
+	Default = Color3.fromRGB(30, 160, 90),
 	Flag = "AimbotCircleColor",
 })
 

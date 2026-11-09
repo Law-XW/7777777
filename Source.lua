@@ -59,21 +59,21 @@ end
 local Zero = {}
 Zero.__index = Zero
 Zero.Version = "1.9.2"
-Zero.Font = Enum.Font.BuilderSans
-Zero.FontMedium = Enum.Font.BuilderSansMedium
-Zero.FontBold = Enum.Font.BuilderSansBold
+Zero.Font = Enum.Font.Arial
+Zero.FontMedium = Enum.Font.Arial
+Zero.FontBold = Enum.Font.ArialBold
 
 Zero.Theme = {
-	Background = Color3.fromRGB(10, 11, 14),
-	Section = Color3.fromRGB(16, 17, 21),
-	Element = Color3.fromRGB(24, 26, 32),
-	ElementHover = Color3.fromRGB(33, 36, 44),
-	Track = Color3.fromRGB(44, 47, 57),
-	Accent = Color3.fromRGB(56, 176, 232),
-	Text = Color3.fromRGB(236, 238, 243),
-	SubText = Color3.fromRGB(134, 139, 152),
-	Stroke = Color3.fromRGB(30, 32, 40),
-	Danger = Color3.fromRGB(226, 84, 96),
+	Background = Color3.fromRGB(10, 11, 11),
+	Section = Color3.fromRGB(17, 21, 19),
+	Element = Color3.fromRGB(24, 30, 27),
+	ElementHover = Color3.fromRGB(33, 41, 37),
+	Track = Color3.fromRGB(42, 52, 47),
+	Accent = Color3.fromRGB(30, 160, 90),
+	Text = Color3.fromRGB(232, 236, 234),
+	SubText = Color3.fromRGB(128, 138, 132),
+	Stroke = Color3.fromRGB(30, 38, 34),
+	Danger = Color3.fromRGB(214, 80, 92),
 }
 
 local T = Zero.Theme
@@ -484,7 +484,7 @@ local function buildElements(window, container, tab, popup)
 			TextColor3 = T.Text,
 			AutoButtonColor = false,
 			Parent = row,
-		}, { corner(8), stroke(T.Stroke, 1) })
+		}, { corner(6), stroke(T.Stroke, 1) })
 		local ring = getStroke(btn)
 		btn.MouseEnter:Connect(function()
 			tween(btn, { BackgroundColor3 = T.ElementHover }, 0.12)
@@ -513,32 +513,32 @@ local function buildElements(window, container, tab, popup)
 		local hit = hitbox(row)
 		local lbl = label({
 			Text = opts.Name or "Toggle",
-			Size = UDim2.new(1, -44, 1, 0),
+			Size = UDim2.new(1, -40, 1, 0),
 			Position = UDim2.fromOffset(1, 0),
 			Parent = row,
 		})
 		local track = create("Frame", {
-			Size = UDim2.fromOffset(34, 18),
-			Position = UDim2.new(1, -35, 0.5, -9),
+			Size = UDim2.fromOffset(30, 16),
+			Position = UDim2.new(1, -31, 0.5, -8),
 			BackgroundColor3 = T.Track,
 			BorderSizePixel = 0,
 			Parent = row,
-		}, { corner(9), stroke(T.Track, 1) })
+		}, { corner(8), stroke(T.Track, 1) })
 		local trackStroke = getStroke(track)
 		local knob = create("Frame", {
-			Size = UDim2.fromOffset(12, 12),
+			Size = UDim2.fromOffset(10, 10),
 			AnchorPoint = Vector2.new(0, 0.5),
 			Position = UDim2.new(0, 3, 0.5, 0),
 			BackgroundColor3 = T.SubText,
 			BorderSizePixel = 0,
 			Parent = track,
-		}, { corner(6) })
+		}, { corner(5) })
 
 		local swatch
 		if opts.Color then
 			swatch = makeSwatch(row, opts.Color, opts.ColorCallback)
-			swatch.Button.Position = UDim2.new(1, -71, 0.5, -7)
-			lbl.Size = UDim2.new(1, -78, 1, 0)
+			swatch.Button.Position = UDim2.new(1, -67, 0.5, -7)
+			lbl.Size = UDim2.new(1, -74, 1, 0)
 			if opts.ColorFlag then
 				window.Flags[opts.ColorFlag] = swatch
 			end
@@ -548,7 +548,7 @@ local function buildElements(window, container, tab, popup)
 			local trackColor = state and T.Accent or T.Track
 			local knobColor = state and T.Text or T.SubText
 			local textColor = state and T.Text or T.SubText
-			local x = state and 19 or 3
+			local x = state and 17 or 3
 			if animate then
 				tween(track, { BackgroundColor3 = trackColor }, 0.18)
 				tween(trackStroke, { Color = trackColor }, 0.18)
@@ -590,7 +590,7 @@ local function buildElements(window, container, tab, popup)
 			end
 			local gear = create("TextButton", {
 				Size = UDim2.fromOffset(18, 18),
-				Position = UDim2.new(1, swatch and -93 or -57, 0.5, -9),
+				Position = UDim2.new(1, swatch and -89 or -53, 0.5, -9),
 				BackgroundTransparency = 1,
 				Text = "",
 				AutoButtonColor = false,
@@ -600,7 +600,7 @@ local function buildElements(window, container, tab, popup)
 			local gearIcon = icon(gear, "settings", 14, T.SubText)
 			gearIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 			gearIcon.Position = UDim2.fromScale(0.5, 0.5)
-			lbl.Size = UDim2.new(1, swatch and -100 or -64, 1, 0)
+			lbl.Size = UDim2.new(1, swatch and -96 or -60, 1, 0)
 			settings = window:CreatePopup(sopts.Width or 220, sopts.Title or ((opts.Name or "Toggle") .. " Settings"))
 			settings.Api = buildElements(window, settings.Panel, nil, true)
 			settings.OnState = function(open)
@@ -1657,18 +1657,19 @@ function Tab:AddSection(name, side, iconName, tag)
 		Size = UDim2.new(1, 0, 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundColor3 = T.Section,
+		BackgroundTransparency = 0.2,
 		BorderSizePixel = 0,
 		LayoutOrder = nextOrder(column),
 		Parent = column,
 	}, {
 		corner(10),
 		stroke(T.Stroke, 1),
-		padding(12, 0, 12, 12),
+		padding(11, 0, 11, 12),
 		create("UIListLayout", { Padding = UDim.new(0, 7), SortOrder = Enum.SortOrder.LayoutOrder }),
 	})
 
 	local header = create("Frame", {
-		Size = UDim2.new(1, 0, 0, 34),
+		Size = UDim2.new(1, 0, 0, 32),
 		BackgroundTransparency = 1,
 		LayoutOrder = 0,
 		Parent = frame,
@@ -1717,7 +1718,9 @@ function Tab:SelectSubTab(sub)
 		tween(getStroke(other.Button), { Color = on and T.Accent or T.Stroke, Transparency = on and 0.45 or 0 }, 0.2)
 		tween(other.Label, { TextColor3 = on and T.Text or T.SubText }, 0.15)
 		tween(other.Indicator, { Size = UDim2.new(on and 0.9 or 0, 0, 0, 2) }, 0.3, Quint)
+		tween(other.Glow, { Size = UDim2.new(on and 0.9 or 0, 0, 0, 7) }, 0.3, Quint)
 		other.Indicator.BackgroundColor3 = T.Accent
+		other.Glow.BackgroundColor3 = T.Accent
 		if other.Icon then
 			tween(other.Icon, { ImageColor3 = on and T.Accent or T.SubText }, 0.15)
 		end
@@ -1787,16 +1790,27 @@ function Tab:AddSubTab(name, iconName)
 		}),
 	})
 	local fade = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.5, 0),
-		NumberSequenceKeypoint.new(1, 1),
+		NumberSequenceKeypoint.new(0, 0.9),
+		NumberSequenceKeypoint.new(0.2, 0),
+		NumberSequenceKeypoint.new(0.8, 0),
+		NumberSequenceKeypoint.new(1, 0.9),
 	})
+	sub.Glow = create("Frame", {
+		Size = UDim2.new(0, 0, 0, 7),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 1, -2),
+		BackgroundColor3 = T.Accent,
+		BackgroundTransparency = 0.65,
+		BorderSizePixel = 0,
+		Parent = sub.Button,
+	}, { corner(4), create("UIGradient", { Transparency = fade }) })
 	sub.Indicator = create("Frame", {
 		Size = UDim2.new(0, 0, 0, 2),
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(0.5, 0, 1, -2),
 		BackgroundColor3 = T.Accent,
 		BorderSizePixel = 0,
+		ZIndex = 3,
 		Parent = sub.Button,
 	}, { corner(1), create("UIGradient", { Transparency = fade }) })
 	if iconName then
@@ -1841,10 +1855,12 @@ function Window:SelectTab(tab)
 	for _, other in ipairs(self.Tabs) do
 		local on = other == tab
 		other.Page.Visible = on
-		tween(other.Button, { BackgroundTransparency = on and 0.86 or 1, BackgroundColor3 = on and T.Accent or T.Element }, 0.2)
+		tween(other.Button, { BackgroundTransparency = on and 0.92 or 1, BackgroundColor3 = on and T.Accent or T.Element }, 0.2)
 		tween(other.Label, { TextColor3 = on and T.Text or T.SubText }, 0.15)
-		tween(other.Indicator, { Size = UDim2.new(0, 3, 0, on and 16 or 0) }, 0.3, Quint)
+		tween(other.Indicator, { Size = UDim2.new(on and 0.9 or 0, 0, 0, 2) }, 0.3, Quint)
+		tween(other.Glow, { Size = UDim2.new(on and 0.9 or 0, 0, 0, 7) }, 0.3, Quint)
 		other.Indicator.BackgroundColor3 = T.Accent
+		other.Glow.BackgroundColor3 = T.Accent
 		if other.Icon then
 			tween(other.Icon, { ImageColor3 = on and T.Accent or T.SubText }, 0.15)
 		end
@@ -1882,7 +1898,7 @@ end
 function Window:AddTab(name, iconName)
 	local tab = setmetatable({ Window = self, Name = name, Counts = { Left = 0, Right = 0 } }, Tab)
 	tab.Button = create("TextButton", {
-		Size = UDim2.new(1, 0, 0, 34),
+		Size = UDim2.new(1, 0, 0, 32),
 		BackgroundColor3 = T.Element,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
@@ -1890,15 +1906,31 @@ function Window:AddTab(name, iconName)
 		AutoButtonColor = false,
 		LayoutOrder = #self.Tabs + 1,
 		Parent = self.TabList,
-	}, { corner(8) })
-	tab.Indicator = create("Frame", {
-		Size = UDim2.new(0, 3, 0, 0),
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 3, 0.5, 0),
+	}, { corner(7) })
+	local fade = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.9),
+		NumberSequenceKeypoint.new(0.2, 0),
+		NumberSequenceKeypoint.new(0.8, 0),
+		NumberSequenceKeypoint.new(1, 0.9),
+	})
+	tab.Glow = create("Frame", {
+		Size = UDim2.new(0, 0, 0, 7),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 1, -2),
 		BackgroundColor3 = T.Accent,
+		BackgroundTransparency = 0.65,
 		BorderSizePixel = 0,
 		Parent = tab.Button,
-	}, { corner(2) })
+	}, { corner(4), create("UIGradient", { Transparency = fade }) })
+	tab.Indicator = create("Frame", {
+		Size = UDim2.new(0, 0, 0, 2),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 1, -2),
+		BackgroundColor3 = T.Accent,
+		BorderSizePixel = 0,
+		ZIndex = 3,
+		Parent = tab.Button,
+	}, { corner(1), create("UIGradient", { Transparency = fade }) })
 	local textX = 14
 	if iconName then
 		tab.Icon = icon(tab.Button, iconName, 16, T.SubText)
@@ -1963,7 +1995,7 @@ function Window:AddSettingsManager(opts)
 	})
 	interface:AddKeybind({
 		Name = "Toggle UI",
-		Default = opts.Key,
+		Default = opts.Key or Enum.KeyCode.RightShift,
 		Flag = "UIToggleKey",
 		Pressed = function()
 			window:SetVisible(not window.Shown)
@@ -4968,8 +5000,8 @@ function Zero:CreateWindow(opts)
 
 	local camera = workspace.CurrentCamera
 	local viewport = camera and camera.ViewportSize or Vector2.new(1280, 720)
-	local width = math.floor(math.min(opts.Width or 680, viewport.X - 20) / 2) * 2
-	local height = math.floor(math.min(opts.Height or 420, viewport.Y - 20) / 2) * 2
+	local width = math.floor(math.min(opts.Width or 620, viewport.X - 20) / 2) * 2
+	local height = math.floor(math.min(opts.Height or 380, viewport.Y - 20) / 2) * 2
 
 	local main = create("Frame", {
 		Name = "Main",
@@ -4987,6 +5019,40 @@ function Zero:CreateWindow(opts)
 	})
 	window.Main = main
 	window.Scale = main:FindFirstChildOfClass("UIScale")
+	create("Frame", {
+		Name = "GlowTopLeft",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = T.Accent,
+		BorderSizePixel = 0,
+		Parent = main,
+	}, {
+		create("UIGradient", {
+			Rotation = 45,
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0.72),
+				NumberSequenceKeypoint.new(0.2, 0.9),
+				NumberSequenceKeypoint.new(0.45, 1),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
+		}),
+	})
+	create("Frame", {
+		Name = "GlowBottomLeft",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = T.Accent,
+		BorderSizePixel = 0,
+		Parent = main,
+	}, {
+		create("UIGradient", {
+			Rotation = -45,
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0.78),
+				NumberSequenceKeypoint.new(0.18, 0.93),
+				NumberSequenceKeypoint.new(0.4, 1),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
+		}),
+	})
 	local intro = opts.Intro ~= false
 	if not intro then
 		tween(window.Scale, { Scale = 1 }, 0.45, Back)
@@ -4996,6 +5062,7 @@ function Zero:CreateWindow(opts)
 		Name = "Top",
 		Size = UDim2.new(1, 0, 0, 38),
 		BackgroundColor3 = T.Section,
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Parent = main,
 	}, { corner(12) })
@@ -5003,6 +5070,7 @@ function Zero:CreateWindow(opts)
 		Size = UDim2.new(1, 0, 0, 20),
 		Position = UDim2.new(0, 0, 1, -20),
 		BackgroundColor3 = T.Section,
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Parent = top,
 	})
@@ -5207,14 +5275,16 @@ function Zero:CreateWindow(opts)
 	end)
 
 	local sidebar = create("Frame", {
-		Size = UDim2.new(0, 150, 1, 0),
+		Size = UDim2.new(0, 130, 1, 0),
 		BackgroundColor3 = T.Section,
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Parent = body,
 	}, { corner(12) })
 	create("Frame", {
 		Size = UDim2.new(1, 0, 0, 20),
 		BackgroundColor3 = T.Section,
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Parent = sidebar,
 	})
@@ -5222,6 +5292,7 @@ function Zero:CreateWindow(opts)
 		Size = UDim2.new(0, 20, 1, 0),
 		Position = UDim2.new(1, -20, 0, 0),
 		BackgroundColor3 = T.Section,
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Parent = sidebar,
 	})
@@ -5326,8 +5397,8 @@ function Zero:CreateWindow(opts)
 	})
 
 	window.Pages = create("Frame", {
-		Size = UDim2.new(1, -150, 1, -26),
-		Position = UDim2.fromOffset(150, 0),
+		Size = UDim2.new(1, -130, 1, -26),
+		Position = UDim2.fromOffset(130, 0),
 		BackgroundTransparency = 1,
 		ClipsDescendants = true,
 		Parent = body,
@@ -5335,21 +5406,24 @@ function Zero:CreateWindow(opts)
 
 	local footer = create("Frame", {
 		Name = "Footer",
-		Size = UDim2.new(1, -150, 0, 26),
-		Position = UDim2.new(0, 150, 1, -26),
+		Size = UDim2.new(1, -130, 0, 26),
+		Position = UDim2.new(0, 130, 1, -26),
 		BackgroundColor3 = T.Section,
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Parent = body,
 	}, { corner(12) })
 	create("Frame", {
 		Size = UDim2.new(1, 0, 0, 14),
 		BackgroundColor3 = T.Section,
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Parent = footer,
 	})
 	create("Frame", {
 		Size = UDim2.new(0, 14, 1, 0),
 		BackgroundColor3 = T.Section,
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Parent = footer,
 	})
