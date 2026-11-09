@@ -5029,9 +5029,9 @@ function Zero:CreateWindow(opts)
 		create("UIGradient", {
 			Rotation = 45,
 			Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 0.72),
-				NumberSequenceKeypoint.new(0.2, 0.9),
-				NumberSequenceKeypoint.new(0.45, 1),
+				NumberSequenceKeypoint.new(0, 0.75),
+				NumberSequenceKeypoint.new(0.1, 0.92),
+				NumberSequenceKeypoint.new(0.24, 1),
 				NumberSequenceKeypoint.new(1, 1),
 			}),
 		}),
@@ -5046,9 +5046,9 @@ function Zero:CreateWindow(opts)
 		create("UIGradient", {
 			Rotation = -45,
 			Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 0.78),
-				NumberSequenceKeypoint.new(0.18, 0.93),
-				NumberSequenceKeypoint.new(0.4, 1),
+				NumberSequenceKeypoint.new(0, 0.8),
+				NumberSequenceKeypoint.new(0.09, 0.94),
+				NumberSequenceKeypoint.new(0.22, 1),
 				NumberSequenceKeypoint.new(1, 1),
 			}),
 		}),
