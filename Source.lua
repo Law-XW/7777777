@@ -64,15 +64,15 @@ Zero.FontMedium = Enum.Font.Arial
 Zero.FontBold = Enum.Font.ArialBold
 
 Zero.Theme = {
-	Background = Color3.fromRGB(10, 11, 11),
-	Section = Color3.fromRGB(17, 21, 19),
-	Element = Color3.fromRGB(24, 30, 27),
-	ElementHover = Color3.fromRGB(33, 41, 37),
-	Track = Color3.fromRGB(42, 52, 47),
-	Accent = Color3.fromRGB(30, 160, 90),
-	Text = Color3.fromRGB(232, 236, 234),
-	SubText = Color3.fromRGB(128, 138, 132),
-	Stroke = Color3.fromRGB(30, 38, 34),
+	Background = Color3.fromRGB(8, 10, 14),
+	Section = Color3.fromRGB(14, 18, 24),
+	Element = Color3.fromRGB(21, 27, 35),
+	ElementHover = Color3.fromRGB(30, 38, 49),
+	Track = Color3.fromRGB(40, 49, 62),
+	Accent = Color3.fromRGB(52, 168, 222),
+	Text = Color3.fromRGB(232, 236, 240),
+	SubText = Color3.fromRGB(128, 136, 148),
+	Stroke = Color3.fromRGB(30, 38, 49),
 	Danger = Color3.fromRGB(214, 80, 92),
 }
 

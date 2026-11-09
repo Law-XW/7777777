@@ -26,7 +26,7 @@ local Toggle = Controls:AddToggle({
 	Name = "Example Toggle",
 	Default = false,
 	Flag = "ExampleToggle",
-	Color = Color3.fromRGB(30, 160, 90),
+	Color = Color3.fromRGB(52, 168, 222),
 	ColorFlag = "ExampleToggleColor",
 	Callback = function(Value)
 		print("Example Toggle", Value)
@@ -160,7 +160,7 @@ AimbotFov:AddSlider({
 })
 AimbotFov:AddColorPicker({
 	Name = "Circle Color",
-	Default = Color3.fromRGB(30, 160, 90),
+	Default = Color3.fromRGB(52, 168, 222),
 	Flag = "AimbotCircleColor",
 })
 
